@@ -123,6 +123,11 @@ private:
 	 */
 	matrix::Vector3f pid_attenuations(float tpa_breakpoint, float tpa_rate);
 
+	/**
+	 * Transform computed torques to equivalent normalized inputs
+	 */
+	matrix::Vector3f torque_to_attctrl(matrix::Vector3f &torque);
+
 
 	int		_v_att_sub{-1};			/**< vehicle attitude subscription */
 	int		_v_att_sp_sub{-1};		/**< vehicle attitude setpoint subscription */

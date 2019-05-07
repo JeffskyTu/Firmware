@@ -1,6 +1,7 @@
 uorb start
 param load
 dataman start
+param set MPC_THR_MIN 0.05
 param set BAT_N_CELLS 3
 param set CAL_ACC0_ID 1376264
 param set CAL_ACC0_XOFF 0.01

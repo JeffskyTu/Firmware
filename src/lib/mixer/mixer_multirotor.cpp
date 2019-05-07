@@ -71,7 +71,7 @@ MultirotorMixer::MultirotorMixer(ControlCallback control_cb,
 	_yaw_scale(yaw_scale),
 	_idle_speed(-1.0f + idle_speed * 2.0f),	/* shift to output range here to avoid runtime calculation */
 	_delta_out_max(0.0f),
-	_thrust_factor(0.0f),
+	_thrust_factor(0.4785f),	/* model: thrust = (1 - _thrust_factor) * PWM + _thrust_factor * PWM^2 */
 	_airmode(false),
 	_rotor_count(_config_rotor_count[(MultirotorGeometryUnderlyingType)geometry]),
 	_rotors(_config_index[(MultirotorGeometryUnderlyingType)geometry]),

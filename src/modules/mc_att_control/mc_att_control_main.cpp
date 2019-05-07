@@ -60,6 +60,26 @@
 #define AXIS_INDEX_YAW 2
 #define AXIS_COUNT 3
 
+/**
+ * Used for Model Based Control.
+ * Model Based Controller outputs commands of thrust and torques around three-axis,
+ * while the commands send by px4 to low-level mixer and motors are normalized values in 0~1(thrust) or -1~1(torque).
+ * By converting F&T commands to normalized commands, we can implement Model Based Control methods readily,
+ * using existing mixer and saturation limiter.
+ */
+/* Model of QAV250 */
+#define HALF_LENGTH	0.101f
+#define HALF_WIDTH	0.080f
+
+#define C_M		0.0097f		// C_M = drag torque / motor thrust.
+
+#define I_XX		3e-3f
+#define I_YY		2.7e-3f
+#define I_ZZ		6.0e-3f
+#define GRA_ACC		9.8066f
+#define MAV_MASS	0.703f
+
+
 using namespace matrix;
 
 
@@ -475,6 +495,49 @@ MulticopterAttitudeControl::pid_attenuations(float tpa_breakpoint, float tpa_rat
 	return pidAttenuationPerAxis;
 }
 
+Vector3f
+MulticopterAttitudeControl::torque_to_attctrl(matrix::Vector3f &computed_torque)
+{
+	/* motor maximum thrust model */
+	float thrust_max = 5.488f * sinf(_battery_status.voltage_filtered_v * 0.4502f + 2.2241f);
+
+	/* mixer matrix */
+	float array_mixer[4][3] = {
+			{-0.707107f,  0.707107f,  1.0f},
+			{0.707107f,  -0.707107f,  1.0f},
+			{0.707107f,  0.707107f,  -1.0f},
+			{-0.707107f,  -0.707107f,  -1.0f}
+	};
+	Matrix<float, 4, 3> mixer_matrix(array_mixer);
+
+//	Matrix<float, 4, 3> mixer_matrix;
+//	Vector3f row_r1(-0.707107f,  0.707107f,  1.0f);
+//	Vector3f row_r2(0.707107f,  -0.707107f,  1.0f);
+//	Vector3f row_r3(0.707107f,  0.707107f,  -1.0f);
+//	Vector3f row_r4(-0.707107f,  -0.707107f,  -1.0f);
+//	mixer_matrix.setRow(0, row_r1);
+//	mixer_matrix.setRow(1, row_r2);
+//	mixer_matrix.setRow(2, row_r3);
+//	mixer_matrix.setRow(3, row_r4);
+
+	/* matrix from thrust of four propellers to torque about 3-axes */
+	float array_torque[3][4] = {
+			{-HALF_LENGTH, HALF_LENGTH, HALF_LENGTH, -HALF_LENGTH},
+			{HALF_WIDTH, -HALF_WIDTH, HALF_WIDTH, -HALF_WIDTH},
+			{C_M, C_M, -C_M, -C_M}
+	};
+	Matrix<float, 3, 4> gentrq_matrix(array_torque);
+
+	/* input = (Gamma * Mixer * Tmax)^(-1) * computed_torque */
+	SquareMatrix<float, 3> gentrq_mixer = Matrix<float, 3, 3>(gentrq_matrix * mixer_matrix);
+	Matrix<float, 3, 3> trq_to_attctrl = gentrq_mixer.I() / thrust_max;
+
+//	PX4_INFO("trq_to_attctrl's diag = %d, %d, %d", (int)(trq_to_attctrl(0,0)*1000.0f), (int)(trq_to_attctrl(1,1)*1000.0f), (int)(trq_to_attctrl(2,2)*1000.0f));
+
+	return trq_to_attctrl * computed_torque;
+
+}
+
 /*
  * Attitude rates controller.
  * Input: '_rates_sp' vector, '_thrust_sp'
@@ -520,9 +583,12 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 	rates(1) -= _sensor_bias.gyro_y_bias;
 	rates(2) -= _sensor_bias.gyro_z_bias;
 
-	Vector3f rates_p_scaled = _rate_p.emult(pid_attenuations(_tpa_breakpoint_p.get(), _tpa_rate_p.get()));
-	Vector3f rates_i_scaled = _rate_i.emult(pid_attenuations(_tpa_breakpoint_i.get(), _tpa_rate_i.get()));
-	Vector3f rates_d_scaled = _rate_d.emult(pid_attenuations(_tpa_breakpoint_d.get(), _tpa_rate_d.get()));
+//	Vector3f rates_p_scaled = _rate_p.emult(pid_attenuations(_tpa_breakpoint_p.get(), _tpa_rate_p.get()));
+//	Vector3f rates_i_scaled = _rate_i.emult(pid_attenuations(_tpa_breakpoint_i.get(), _tpa_rate_i.get()));
+//	Vector3f rates_d_scaled = _rate_d.emult(pid_attenuations(_tpa_breakpoint_d.get(), _tpa_rate_d.get()));
+	Vector3f rates_p_scaled = _rate_p;
+	Vector3f rates_i_scaled = _rate_i;
+	Vector3f rates_d_scaled = _rate_d;
 
 	/* angular rates error */
 	Vector3f rates_err = _rates_sp - rates;
@@ -533,10 +599,27 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 		_lp_filters_d[1].apply(rates(1)),
 		_lp_filters_d[2].apply(rates(2)));
 
-	_att_control = rates_p_scaled.emult(rates_err) +
-		       _rates_int -
-		       rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt +
-		       _rate_ff.emult(_rates_sp);
+//	_att_control = rates_p_scaled.emult(rates_err) +
+//		       _rates_int -
+//		       rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt +
+//		       _rate_ff.emult(_rates_sp);
+	/* using PD controller for linear part */
+	Vector3f att_ctrl = rates_p_scaled.emult(rates_err) + _rates_int - rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt * 1.0f;
+
+	/* Compensate nonlinear gyro moment and ... */
+	Vector3f torque_affix, compen_torque, compen_control;
+	torque_affix(0) = (I_ZZ - I_YY) * rates(1) * rates(2);
+	torque_affix(1) = (I_XX - I_ZZ) * rates(0) * rates(2);
+	torque_affix(2) = (I_YY - I_XX) * rates(0) * rates(1);
+
+	compen_torque = torque_affix;
+
+	/* Convert torque command to normalized input */
+	compen_control = torque_to_attctrl(compen_torque);
+
+	/* Plus all control as output*/
+	_att_control = att_ctrl + compen_control;
+//	_att_control = att_ctrl;
 
 	_rates_prev = rates;
 	_rates_prev_filtered = rates_filtered;
