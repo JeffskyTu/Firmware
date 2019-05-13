@@ -412,6 +412,7 @@ MulticopterAttitudeControl::sensor_bias_poll()
 void
 MulticopterAttitudeControl::control_attitude(float dt)
 {
+//	PX4_INFO("attitude loop: 1000*dt = %d", (int)(dt * 1000.0f));
 	vehicle_attitude_setpoint_poll();
 	_thrust_sp = _v_att_sp.thrust;
 
@@ -572,7 +573,8 @@ MulticopterAttitudeControl::torque_to_attctrl(matrix::Vector3f &computed_torque)
  */
 inline float MulticopterAttitudeControl::motor_max_thrust(float battery_voltage)
 {
-	return 5.488f * sinf(battery_voltage * 0.4502f + 2.2241f);
+//	return 5.488f * sinf(battery_voltage * 0.4502f + 2.2241f);
+	return 4.77f;
 }
 
 /**
@@ -656,6 +658,8 @@ void MulticopterAttitudeControl::estimator_model(Vector3f &rates, Vector3f &x1, 
 void
 MulticopterAttitudeControl::control_attitude_rates(float dt)
 {
+//	PX4_INFO("attitude_rates loop: 1000*dt = %d", (int)(dt * 1000.0f));
+
 	/* reset integral if disarmed */
 	if (!_v_control_mode.flag_armed || !_vehicle_status.is_rotary_wing) {
 		_rates_int.zero();
@@ -700,6 +704,10 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 	Vector3f rates_i_scaled = _rate_i;
 	Vector3f rates_d_scaled = _rate_d;
 
+//	PX4_INFO("10000*rates(0) = %d", (int)(rates(0) * 10000.0f));
+//	PX4_INFO("10000*rates(1) = %d", (int)(rates(1) * 10000.0f));
+//	PX4_INFO("10000*rates(2) = %d", (int)(rates(2) * 10000.0f));
+
 	/* angular rates error */
 	Vector3f rates_err = _rates_sp - rates;
 
@@ -721,13 +729,18 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 
 	/* compute torque_hat */
 	Vector3f inertia(I_XX, I_YY, I_ZZ);
-	_torque_hat = inertia.emult(_x2) - _x1.cross(inertia.emult(_x1));	// tao = I*w_dot + I*w x w
+	_torque_hat = inertia.emult(_x2) + _x1.cross(inertia.emult(_x1));	// tao = I*w_dot + I*w x w
 
 	/* compute torque_motor through motor thrust model */
 	_torque_motor = compute_actuate_torque();
 	estimator_update(_torque_motor, dt, _x1_trq, _x2_trq);
 
 	_torque_dist = _torque_hat - _x1_trq;
+
+//	PX4_INFO("_torque_hat = %f", _torque_hat);
+//	PX4_INFO("_torque_motor = %f", _x1_trq);
+//	PX4_INFO("torque_dist = %f", _torque_dist);
+//	PX4_INFO("100*torque_dist(0) = %d", (int)(_torque_dist(0) * 100.0f));
 	/* compute gyro moment */
 	Vector3f torque_affix;
 	torque_affix(0) = (I_ZZ - I_YY) * rates(1) * rates(2);
@@ -736,7 +749,7 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 
 	/* Compensate nonlinear gyro moment and disturbed moment */
 	Vector3f compen_torque, compen_control;
-	compen_torque = torque_affix + _torque_dist;
+	compen_torque = torque_affix * 0.0f + _torque_dist * 0.0f;
 
 	/* Convert torque command to normalized input */
 	compen_control = torque_to_attctrl(compen_torque);

@@ -2977,6 +2977,7 @@ MulticopterPositionControl::task_main()
 		const float dt = t_prev != 0 ? (t - t_prev) / 1e6f : 0.004f;
 		t_prev = t;
 
+//		PX4_INFO("position control loop: 10000*dt = %d", (int)(dt * 10000.0f));
 		/* set dt for control blocks */
 		setDt(dt);
 
