@@ -72,6 +72,7 @@
 #define HALF_WIDTH		0.080f
 
 #define C_M				0.0097f		// C_M = drag torque / motor thrust.
+//#define THRUST_FACTOR	0.0f
 #define THRUST_FACTOR	0.4785f
 
 #define I_XX			3e-3f
@@ -526,7 +527,7 @@ MulticopterAttitudeControl::pid_attenuations(float tpa_breakpoint, float tpa_rat
  * Transform computed torques to equivalent normalized inputs
  */
 Vector3f
-MulticopterAttitudeControl::torque_to_attctrl(matrix::Vector3f &computed_torque)
+MulticopterAttitudeControl::torque_to_attctrl(Vector3f &computed_torque)
 {
 	/* motor maximum thrust model */
 	float thrust_max = motor_max_thrust(_battery_status.voltage_filtered_v);
@@ -573,8 +574,13 @@ MulticopterAttitudeControl::torque_to_attctrl(matrix::Vector3f &computed_torque)
  */
 inline float MulticopterAttitudeControl::motor_max_thrust(float battery_voltage)
 {
-//	return 5.488f * sinf(battery_voltage * 0.4502f + 2.2241f);
-	return 4.77f;
+	if(battery_voltage < 11.1f){
+		battery_voltage = 11.1f;
+	} else if(battery_voltage > 12.6f){
+		battery_voltage = 12.6;
+	}
+	return 5.488f * sinf(battery_voltage * 0.4502f + 2.2241f);
+//	return 4.77f;
 }
 
 /**
@@ -635,7 +641,6 @@ void MulticopterAttitudeControl::estimator_update(Vector3f x, const float dt, Ve
 
 }
 
-
 /**
  * Estimator model
  * model: x_hat = wa^2 / (s^2 + 2*zeta*wa*s + wa^2) * x
@@ -658,8 +663,6 @@ void MulticopterAttitudeControl::estimator_model(Vector3f &rates, Vector3f &x1, 
 void
 MulticopterAttitudeControl::control_attitude_rates(float dt)
 {
-//	PX4_INFO("attitude_rates loop: 1000*dt = %d", (int)(dt * 1000.0f));
-
 	/* reset integral if disarmed */
 	if (!_v_control_mode.flag_armed || !_vehicle_status.is_rotary_wing) {
 		_rates_int.zero();
@@ -722,41 +725,33 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 //		       rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt +
 //		       _rate_ff.emult(_rates_sp);
 	/* using PD controller for linear part */
+	Vector3f inertia(I_XX, I_YY, I_ZZ);
 	Vector3f att_ctrl = rates_p_scaled.emult(rates_err) + _rates_int - rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt * 1.0f;
+	Vector3f torque_att_ctrl = inertia.emult(att_ctrl);
 
 	/* estimate attitude rates and accelerations */
 	estimator_update(rates, dt, _x1, _x2);
 
 	/* compute torque_hat */
-	Vector3f inertia(I_XX, I_YY, I_ZZ);
-	_torque_hat = inertia.emult(_x2) + _x1.cross(inertia.emult(_x1));	// tao = I*w_dot + I*w x w
+	_torque_hat = inertia.emult(_x2) + _x1.cross(inertia.emult(_x1));	// tao = I*w_dot + w x I*w
 
 	/* compute torque_motor through motor thrust model */
 	_torque_motor = compute_actuate_torque();
 	estimator_update(_torque_motor, dt, _x1_trq, _x2_trq);
 
 	_torque_dist = _torque_hat - _x1_trq;
-
-//	PX4_INFO("_torque_hat = %f", _torque_hat);
-//	PX4_INFO("_torque_motor = %f", _x1_trq);
-//	PX4_INFO("torque_dist = %f", _torque_dist);
-//	PX4_INFO("100*torque_dist(0) = %d", (int)(_torque_dist(0) * 100.0f));
 	/* compute gyro moment */
-	Vector3f torque_affix;
-	torque_affix(0) = (I_ZZ - I_YY) * rates(1) * rates(2);
-	torque_affix(1) = (I_XX - I_ZZ) * rates(0) * rates(2);
-	torque_affix(2) = (I_YY - I_XX) * rates(0) * rates(1);
+	Vector3f torque_affix = rates.cross(inertia.emult(rates));
 
 	/* Compensate nonlinear gyro moment and disturbed moment */
-	Vector3f compen_torque, compen_control;
-	compen_torque = torque_affix * 0.0f + _torque_dist * 0.0f;
+	Vector3f compen_torque = torque_affix * 1.0f + _torque_dist * 1.0f;
+
+//	PX4_INFO("rates = %8.6f, %8.6f, %8.6f", (double)rates(0), (double)rates(1), (double)rates(2));
+//	PX4_INFO("torque_affix = %8.6f, %8.6f, %8.6f", (double)torque_affix(0), (double)torque_affix(1), (double)torque_affix(2));
 
 	/* Convert torque command to normalized input */
-	compen_control = torque_to_attctrl(compen_torque);
-
-	/* Plus all control as output*/
-	_att_control = att_ctrl + compen_control;
-//	_att_control = att_ctrl;
+	torque_att_ctrl = torque_att_ctrl + compen_torque;
+	_att_control = torque_to_attctrl(torque_att_ctrl);
 
 	_rates_prev = rates;
 	_rates_prev_filtered = rates_filtered;
