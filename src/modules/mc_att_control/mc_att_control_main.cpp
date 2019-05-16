@@ -496,7 +496,7 @@ MulticopterAttitudeControl::pid_attenuations(float tpa_breakpoint, float tpa_rat
 }
 
 Vector3f
-MulticopterAttitudeControl::torque_to_attctrl(matrix::Vector3f &computed_torque)
+MulticopterAttitudeControl::torque_to_attctrl(Vector3f &computed_torque)
 {
 	/* motor maximum thrust model */
 	float thrust_max = 5.488f * sinf(_battery_status.voltage_filtered_v * 0.4502f + 2.2241f);
@@ -604,22 +604,21 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 //		       rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt +
 //		       _rate_ff.emult(_rates_sp);
 	/* using PD controller for linear part */
+	Vector3f inertia(I_XX, I_YY, I_ZZ);
 	Vector3f att_ctrl = rates_p_scaled.emult(rates_err) + _rates_int - rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt * 1.0f;
-
+	Vector3f torque_att_ctrl = inertia.emult(att_ctrl);
 	/* Compensate nonlinear gyro moment and ... */
-	Vector3f torque_affix, compen_torque, compen_control;
-	torque_affix(0) = (I_ZZ - I_YY) * rates(1) * rates(2);
-	torque_affix(1) = (I_XX - I_ZZ) * rates(0) * rates(2);
-	torque_affix(2) = (I_YY - I_XX) * rates(0) * rates(1);
+	Vector3f torque_affix = rates.cross(inertia.emult(rates));
+//	torque_affix(0) = (I_ZZ - I_YY) * rates(1) * rates(2);
+//	torque_affix(1) = (I_XX - I_ZZ) * rates(0) * rates(2);
+//	torque_affix(2) = (I_YY - I_XX) * rates(0) * rates(1);
 
-	compen_torque = torque_affix;
+//	PX4_INFO("rates = %8.6f, %8.6f, %8.6f", (double)rates(0), (double)rates(1), (double)rates(2));
+//	PX4_INFO("torque_affix = %8.6f, %8.6f, %8.6f", (double)torque_affix(0), (double)torque_affix(1), (double)torque_affix(2));
 
 	/* Convert torque command to normalized input */
-	compen_control = torque_to_attctrl(compen_torque);
-
-	/* Plus all control as output*/
-	_att_control = att_ctrl + compen_control;
-//	_att_control = att_ctrl;
+	torque_att_ctrl = torque_att_ctrl + torque_affix * 1.0f;
+	_att_control = torque_to_attctrl(torque_att_ctrl);
 
 	_rates_prev = rates;
 	_rates_prev_filtered = rates_filtered;
