@@ -87,6 +87,14 @@
 
 using namespace matrix;
 
+void MulticopterAttitudeControl::print_vector3(const char *name, Vector3f &vector3, bool print_time){
+	if(_num_update%500 == 0){
+		if(print_time){
+			PX4_INFO("------- time = %f s -------", (double)(hrt_absolute_time()*1e-6f));
+		}
+		PX4_INFO("%s = %8.6f, %8.6f, %8.6f", name, (double)vector3(0), (double)vector3(1), (double)vector3(2));
+	}
+}
 
 int MulticopterAttitudeControl::print_usage(const char *reason)
 {
@@ -154,6 +162,7 @@ MulticopterAttitudeControl::MulticopterAttitudeControl() :
 	_torque_hat.zero();
 	_torque_motor.zero();
 	_torque_dist.zero();
+	_torque_dist_last.zero();
 	_x1_trq.zero();
 	_x2_trq.zero();
 
@@ -232,6 +241,10 @@ MulticopterAttitudeControl::parameters_updated()
 			M_DEG_TO_RAD_F * _board_offset_y.get(),
 			M_DEG_TO_RAD_F * _board_offset_z.get()));
 	_board_rotation = board_rotation_offset * _board_rotation;
+
+	/* esc parameters */
+	_pwm_min_value = _pwm_min.get();
+	_pwm_max_value = _pwm_max.get();
 }
 
 void
@@ -563,8 +576,6 @@ MulticopterAttitudeControl::torque_to_attctrl(Vector3f &computed_torque)
 	SquareMatrix<float, 3> gentrq_mixer = Matrix<float, 3, 3>(gentrq_matrix * mixer_matrix);
 	Matrix<float, 3, 3> trq_to_attctrl = gentrq_mixer.I() / thrust_max;
 
-//	PX4_INFO("trq_to_attctrl's diag = %d, %d, %d", (int)(trq_to_attctrl(0,0)*1000.0f), (int)(trq_to_attctrl(1,1)*1000.0f), (int)(trq_to_attctrl(2,2)*1000.0f));
-
 	return trq_to_attctrl * computed_torque;
 
 }
@@ -579,8 +590,8 @@ inline float MulticopterAttitudeControl::motor_max_thrust(float battery_voltage)
 	} else if(battery_voltage > 12.6f){
 		battery_voltage = 12.6;
 	}
-	return 5.488f * sinf(battery_voltage * 0.4502f + 2.2241f);
-//	return 4.77f;
+//	return 5.488f * sinf(battery_voltage * 0.4502f + 2.2241f);
+	return 4.77f;
 }
 
 /**
@@ -599,17 +610,32 @@ MulticopterAttitudeControl::compute_actuate_torque()
 	// motor thrust model:
 	// thrust = (1 - _thrust_factor) * PWM + _thrust_factor * PWM^2
 	float pwm[4];
-	pwm[0] = (1.0f + _actuator_outputs.output[0]) / 2.0f;
-	pwm[1] = (1.0f + _actuator_outputs.output[1]) / 2.0f;
-	pwm[2] = (1.0f + _actuator_outputs.output[2]) / 2.0f;
-	pwm[3] = (1.0f + _actuator_outputs.output[3]) / 2.0f;
-	Vector<float, 4> thrust;
-	thrust(0) = (1.0f - THRUST_FACTOR) * pwm[0] + THRUST_FACTOR * pwm[0] * pwm[0];
-	thrust(1) = (1.0f - THRUST_FACTOR) * pwm[1] + THRUST_FACTOR * pwm[1] * pwm[1];
-	thrust(2) = (1.0f - THRUST_FACTOR) * pwm[2] + THRUST_FACTOR * pwm[2] * pwm[2];
-	thrust(3) = (1.0f - THRUST_FACTOR) * pwm[3] + THRUST_FACTOR * pwm[3] * pwm[3];
+	float pwm_amp = _pwm_max_value - _pwm_min_value;
+//	pwm[0] = (1.0f + _actuator_outputs.output[0]) / 2.0f;
+//	pwm[1] = (1.0f + _actuator_outputs.output[1]) / 2.0f;
+//	pwm[2] = (1.0f + _actuator_outputs.output[2]) / 2.0f;
+//	pwm[3] = (1.0f + _actuator_outputs.output[3]) / 2.0f;
+	pwm[0] = math::constrain((_actuator_outputs.output[0] - _pwm_min_value) / pwm_amp, 0.f, 1.f);
+	pwm[1] = math::constrain((_actuator_outputs.output[1] - _pwm_min_value) / pwm_amp, 0.f, 1.f);
+	pwm[2] = math::constrain((_actuator_outputs.output[2] - _pwm_min_value) / pwm_amp, 0.f, 1.f);
+	pwm[3] = math::constrain((_actuator_outputs.output[3] - _pwm_min_value) / pwm_amp, 0.f, 1.f);
+	Vector<float, 4> throttle, thrust;
+	throttle(0) = (1.0f - THRUST_FACTOR) * pwm[0] + THRUST_FACTOR * pwm[0] * pwm[0];
+	throttle(1) = (1.0f - THRUST_FACTOR) * pwm[1] + THRUST_FACTOR * pwm[1] * pwm[1];
+	throttle(2) = (1.0f - THRUST_FACTOR) * pwm[2] + THRUST_FACTOR * pwm[2] * pwm[2];
+	throttle(3) = (1.0f - THRUST_FACTOR) * pwm[3] + THRUST_FACTOR * pwm[3] * pwm[3];
+	thrust = throttle * thrust_max;
 
-	return gentrq_matrix * (thrust * thrust_max);
+//	if(_num_update%500 == 0){
+//		PX4_INFO("thrust_max = %8.6f", (double)thrust_max);
+////		PX4_INFO("_pwm_min_value = %d", _pwm_min_value);
+////		PX4_INFO("_pwm_max_value = %d", _pwm_max_value);
+//		PX4_INFO("pwm = %8.6f, %8.6f, %8.6f, %8.6f", (double)pwm[0], (double)pwm[1], (double)pwm[2], (double)pwm[3]);
+//		PX4_INFO("throttle = %8.6f, %8.6f, %8.6f, %8.6f", (double)throttle(0), (double)throttle(1), (double)throttle(2), (double)throttle(3));
+//		PX4_INFO("thrust = %8.6f, %8.6f, %8.6f, %8.6f", (double)thrust(0), (double)thrust(1), (double)thrust(2), (double)thrust(3));
+//	}
+
+	return gentrq_matrix * (throttle * thrust_max);
 }
 
 /**
@@ -740,17 +766,30 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 	estimator_update(_torque_motor, dt, _x1_trq, _x2_trq);
 
 	_torque_dist = _torque_hat - _x1_trq;
+	_torque_dist_last = _torque_dist;
 	/* compute gyro moment */
 	Vector3f torque_affix = rates.cross(inertia.emult(rates));
 
 	/* Compensate nonlinear gyro moment and disturbed moment */
-	Vector3f compen_torque = torque_affix * 1.0f + _torque_dist * 1.0f;
+	Vector3f compen_torque = torque_affix * 1.0f - _torque_dist * 1.0f;
+//	Vector3f compen_torque = torque_affix * 1.0f - (_torque_dist - _torque_dist_last) * 1.0f;
 
 //	PX4_INFO("rates = %8.6f, %8.6f, %8.6f", (double)rates(0), (double)rates(1), (double)rates(2));
 //	PX4_INFO("torque_affix = %8.6f, %8.6f, %8.6f", (double)torque_affix(0), (double)torque_affix(1), (double)torque_affix(2));
+//	if(_num_update%500 == 0){
+//		PX4_INFO("---------time = %f s", (double)(hrt_absolute_time()*1e-6f));
+//		PX4_INFO("compen_torque = %8.6f, %8.6f, %8.6f", (double)compen_torque(0), (double)compen_torque(1), (double)compen_torque(2));
+//		PX4_INFO("--torque_dist = %8.6f, %8.6f, %8.6f", (double)_torque_dist(0), (double)_torque_dist(1), (double)_torque_dist(2));
+//		PX4_INFO("---torque_hat = %8.6f, %8.6f, %8.6f", (double)_torque_hat(0), (double)_torque_hat(1), (double)_torque_hat(2));
+//		PX4_INFO("-torque_motor = %8.6f, %8.6f, %8.6f", (double)_x1_trq(0), (double)_x1_trq(1), (double)_x1_trq(2));
+//	}
+//	print_vector3("compen_torque", compen_torque, 1);
+//	print_vector3("torque_dist", _torque_dist);
+//	print_vector3("torque_hat", _torque_hat);
+//	print_vector3("torque_motor", _x1_trq);
 
 	/* Convert torque command to normalized input */
-	torque_att_ctrl = torque_att_ctrl + compen_torque;
+	torque_att_ctrl = torque_att_ctrl + compen_torque * 0.f;
 	_att_control = torque_to_attctrl(torque_att_ctrl);
 
 	_rates_prev = rates;
@@ -803,7 +842,6 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 void
 MulticopterAttitudeControl::run()
 {
-
 	/*
 	 * do subscriptions
 	 */
@@ -850,6 +888,8 @@ MulticopterAttitudeControl::run()
 	int loop_counter = 0;
 
 	while (!should_exit()) {
+
+		_num_update++;	// count for print info
 
 		poll_fds.fd = _sensor_gyro_sub[_selected_gyro];
 

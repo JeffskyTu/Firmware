@@ -157,6 +157,8 @@ private:
 	void estimator_model(matrix::Vector3f &rates, matrix::Vector3f &x1, matrix::Vector3f &x2,
 						matrix::Vector3f &x1_dot, matrix::Vector3f &x2_dot);
 
+	void print_vector3(const char *name, matrix::Vector3f &vector3, bool print_time = false);
+
 
 
 	int		_v_att_sub{-1};			/**< vehicle attitude subscription */
@@ -273,7 +275,10 @@ private:
 		(ParamFloat<px4::params::SENS_BOARD_Y_OFF>) _board_offset_y,
 		(ParamFloat<px4::params::SENS_BOARD_Z_OFF>) _board_offset_z,
 
-		(ParamFloat<px4::params::VT_WV_YAWR_SCL>) _vtol_wv_yaw_rate_scale		/**< Scale value [0, 1] for yaw rate setpoint  */
+		(ParamFloat<px4::params::VT_WV_YAWR_SCL>) _vtol_wv_yaw_rate_scale,		/**< Scale value [0, 1] for yaw rate setpoint  */
+
+		(ParamInt<px4::params::PWM_MIN>) _pwm_min,
+		(ParamInt<px4::params::PWM_MAX>) _pwm_max
 	)
 
 	matrix::Vector3f _attitude_p;		/**< P gain for attitude control */
@@ -295,8 +300,14 @@ private:
 	matrix::Vector3f	_torque_hat;	// estimate of torque
 	matrix::Vector3f	_torque_motor;	// current torque computed by motor thrust model
 	matrix::Vector3f	_torque_dist;	// disturbed torque
+	matrix::Vector3f	_torque_dist_last;
 	matrix::Vector3f	_x1_trq;
 	matrix::Vector3f	_x2_trq;
+
+	int32_t	_pwm_min_value;
+	int32_t _pwm_max_value;
+
+	int _num_update = 0;
 
 };
 
