@@ -31,10 +31,10 @@ param set MC_ROLLRATE_I 109.5
 param set MC_RR_INT_LIM 142.8
 param set MC_ROLLRATE_D 1.19
 param set MC_PITCH_P 7.0
-param set MC_PITCHRATE_P 98.46
-param set MC_PITCHRATE_I 71.2
-param set MC_PR_INT_LIM 125.7
-param set MC_PITCHRATE_D 1.68
+param set MC_PITCHRATE_P 66.65
+param set MC_PITCHRATE_I 109.5
+param set MC_PR_INT_LIM 142.8
+param set MC_PITCHRATE_D 1.19
 param set MC_YAW_P 4
 param set MC_YAWRATE_P 9.7
 param set MC_YAWRATE_I 6.5
