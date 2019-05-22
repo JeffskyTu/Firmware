@@ -78,8 +78,6 @@
 #define I_XX			3e-3f
 #define I_YY			2.7e-3f
 #define I_ZZ			6.0e-3f
-#define GRA_ACC			9.8066f
-#define MAV_MASS		0.703f
 // Parameters of attitude(acc) estimator
 #define OMEGA_ATT		50.0f
 #define ZETA_ATT		0.8f
@@ -88,7 +86,7 @@
 using namespace matrix;
 
 void MulticopterAttitudeControl::print_vector3(const char *name, Vector3f &vector3, bool print_time){
-	if(_num_update%500 == 0){
+	if(_num_update%200 == 0){
 		if(print_time){
 			PX4_INFO("------- time = %f s -------", (double)(hrt_absolute_time()*1e-6f));
 		}
@@ -590,8 +588,8 @@ inline float MulticopterAttitudeControl::motor_max_thrust(float battery_voltage)
 	} else if(battery_voltage > 12.6f){
 		battery_voltage = 12.6;
 	}
-//	return 5.488f * sinf(battery_voltage * 0.4502f + 2.2241f);
-	return 4.77f;
+	return 5.488f * sinf(battery_voltage * 0.4502f + 2.2241f);
+//	return 4.77f;
 }
 
 /**
@@ -784,12 +782,12 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 //		PX4_INFO("-torque_motor = %8.6f, %8.6f, %8.6f", (double)_x1_trq(0), (double)_x1_trq(1), (double)_x1_trq(2));
 //	}
 //	print_vector3("compen_torque", compen_torque, 1);
-//	print_vector3("torque_dist", _torque_dist);
+//	print_vector3("torque_dist", _torque_dist, 1);
 //	print_vector3("torque_hat", _torque_hat);
 //	print_vector3("torque_motor", _x1_trq);
 
 	/* Convert torque command to normalized input */
-	torque_att_ctrl = torque_att_ctrl + compen_torque * 0.f;
+	torque_att_ctrl = torque_att_ctrl + compen_torque * 1.f;
 	_att_control = torque_to_attctrl(torque_att_ctrl);
 
 	_rates_prev = rates;
