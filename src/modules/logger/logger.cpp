@@ -646,6 +646,10 @@ void Logger::add_default_topics()
 	add_topic("vehicle_vision_position");
 	add_topic("vtol_vehicle_status", 200);
 	add_topic("wind_estimate", 200);
+	add_topic("estimate_force", 100);
+	add_topic("estimate_torque", 100);
+	add_topic("vehicle_estimate_position", 100);
+	add_topic("vehicle_estimate_attitude", 100);
 	add_topic("timesync_status");
 
 #ifdef CONFIG_ARCH_BOARD_SITL

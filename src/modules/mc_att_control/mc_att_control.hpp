@@ -56,6 +56,8 @@
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/vehicle_estimate_attitude.h>
+#include <uORB/topics/estimate_disturb.h>
 
 /**
  * Multicopter attitude control app start / stop handling function
@@ -182,6 +184,8 @@ private:
 	orb_advert_t	_v_rates_sp_pub{nullptr};		/**< rate setpoint publication */
 	orb_advert_t	_actuators_0_pub{nullptr};		/**< attitude actuator controls publication */
 	orb_advert_t	_controller_status_pub{nullptr};	/**< controller status publication */
+	orb_advert_t	_v_esti_att_pub{nullptr};		/**< estimated attitude speed/acc publication */
+	orb_advert_t	_ext_torque_pub{nullptr};		/**< estimated external torque disturbance publication*/
 
 	orb_id_t _rates_sp_id{nullptr};		/**< pointer to correct rates setpoint uORB metadata structure */
 	orb_id_t _actuators_id{nullptr};	/**< pointer to correct actuator controls0 uORB metadata structure */
@@ -201,6 +205,8 @@ private:
 	struct sensor_bias_s			_sensor_bias {};	/**< sensor in-run bias corrections */
 
 	struct actuator_outputs_s		_actuator_outputs {};		/**< actuator outputs to motors */
+	struct vehicle_estimate_attitude_s  _v_esti_att {};		/**< estimated attitude speed/acc */
+	struct estimate_disturb_s		_ext_torque {};		/** estimated external torque disturbance */
 
 	MultirotorMixer::saturation_status _saturation_status{};
 

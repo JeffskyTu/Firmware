@@ -588,7 +588,7 @@ inline float MulticopterAttitudeControl::motor_max_thrust(float battery_voltage)
 	} else if(battery_voltage > 12.6f){
 		battery_voltage = 12.6;
 	}
-	return 5.488f * sinf(battery_voltage * 0.4502f + 2.2241f);
+	return 1.0f*5.488f * sinf(battery_voltage * 0.4502f + 2.2241f);
 //	return 4.77f;
 }
 
@@ -772,19 +772,49 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 	Vector3f compen_torque = torque_affix * 1.0f - _torque_dist * 1.0f;
 //	Vector3f compen_torque = torque_affix * 1.0f - (_torque_dist - _torque_dist_last) * 1.0f;
 
-//	PX4_INFO("rates = %8.6f, %8.6f, %8.6f", (double)rates(0), (double)rates(1), (double)rates(2));
-//	PX4_INFO("torque_affix = %8.6f, %8.6f, %8.6f", (double)torque_affix(0), (double)torque_affix(1), (double)torque_affix(2));
-//	if(_num_update%500 == 0){
-//		PX4_INFO("---------time = %f s", (double)(hrt_absolute_time()*1e-6f));
-//		PX4_INFO("compen_torque = %8.6f, %8.6f, %8.6f", (double)compen_torque(0), (double)compen_torque(1), (double)compen_torque(2));
-//		PX4_INFO("--torque_dist = %8.6f, %8.6f, %8.6f", (double)_torque_dist(0), (double)_torque_dist(1), (double)_torque_dist(2));
-//		PX4_INFO("---torque_hat = %8.6f, %8.6f, %8.6f", (double)_torque_hat(0), (double)_torque_hat(1), (double)_torque_hat(2));
-//		PX4_INFO("-torque_motor = %8.6f, %8.6f, %8.6f", (double)_x1_trq(0), (double)_x1_trq(1), (double)_x1_trq(2));
-//	}
 //	print_vector3("compen_torque", compen_torque, 1);
 //	print_vector3("torque_dist", _torque_dist, 1);
 //	print_vector3("torque_hat", _torque_hat);
 //	print_vector3("torque_motor", _x1_trq);
+
+	/* publish estimated disturbance */
+	_ext_torque.esti_dist[0] = _torque_dist(0);
+	_ext_torque.esti_dist[1] = _torque_dist(1);
+	_ext_torque.esti_dist[2] = _torque_dist(2);
+
+	_ext_torque.ft_hat[0] = _torque_hat(0);
+	_ext_torque.ft_hat[1] = _torque_hat(1);
+	_ext_torque.ft_hat[2] = _torque_hat(2);
+
+	_ext_torque.ft_motor[0] = _torque_motor(0);
+	_ext_torque.ft_motor[1] = _torque_motor(1);
+	_ext_torque.ft_motor[2] = _torque_motor(2);
+	_ext_torque.ft_motor_filter[0] = _x1_trq(0);
+	_ext_torque.ft_motor_filter[1] = _x1_trq(1);
+	_ext_torque.ft_motor_filter[2] = _x1_trq(2);
+
+	_ext_torque.timestamp = hrt_absolute_time();
+
+	if(_ext_torque_pub != nullptr){
+		orb_publish(ORB_ID(estimate_torque), _ext_torque_pub, &_ext_torque);
+	} else {
+		_ext_torque_pub = orb_advertise(ORB_ID(estimate_torque), &_ext_torque);
+	}
+
+	/* publish angular vel/acc */
+	_v_esti_att.rollspeed = _x1(0);
+	_v_esti_att.pitchspeed = _x1(1);
+	_v_esti_att.yawspeed = _x1(2);
+	_v_esti_att.rollacc = _x2(0);
+	_v_esti_att.pitchacc = _x2(1);
+	_v_esti_att.yawacc = _x2(2);
+	_v_esti_att.timestamp = hrt_absolute_time();
+
+	if(_v_esti_att_pub != nullptr) {
+		orb_publish(ORB_ID(vehicle_estimate_attitude), _v_esti_att_pub, &_v_esti_att);
+	} else {
+		_v_esti_att_pub = orb_advertise(ORB_ID(vehicle_estimate_attitude), &_v_esti_att);
+	}
 
 	/* Convert torque command to normalized input */
 	torque_att_ctrl = torque_att_ctrl + compen_torque * 1.f;

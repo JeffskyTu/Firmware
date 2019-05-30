@@ -130,6 +130,11 @@ set(msg_files
 	vehicle_status_flags.msg
 	vtol_vehicle_status.msg
 	wind_estimate.msg
+	
+	# Added for algorithm development
+	estimate_disturb.msg
+	vehicle_estimate_position.msg
+	vehicle_estimate_attitude.msg
 	)
 
 if(NOT EXTERNAL_MODULES_LOCATION STREQUAL "")
