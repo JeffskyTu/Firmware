@@ -312,6 +312,18 @@ private:
 
 	int32_t	_pwm_min_value;
 	int32_t _pwm_max_value;
+	float 	_omega_att = 50.0f;
+	float	_zeta_att = 0.7f;
+	float	_half_length = 0.101f;
+	float	_half_width	 = 0.08f;
+	float	_C_M	= 	0.0097f;
+	float	_I_XX	= 3e-3f;
+	float	_I_YY	= 2.7e-3f;
+	float	_I_ZZ	= 6e-3f;
+	float	_thrust_factor = 0.4785f;
+	int32_t _ndrc_enable;
+	int32_t _ndi_enable;
+
 
 	int _num_update = 0;
 

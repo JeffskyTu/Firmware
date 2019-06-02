@@ -93,6 +93,7 @@
 #define GRA_ACC			9.8066f
 #define MAV_MASS		0.703f
 #define THRUST_FACTOR	0.4785f
+
 #define OMEGA_VEL		15.0f
 #define ZETA_VEL		0.8f
 #define OMEGA_POS1		20.0f
@@ -262,7 +263,6 @@ private:
 
 		(ParamInt<px4::params::PWM_MIN>) _pwm_min,
 		(ParamInt<px4::params::PWM_MAX>) _pwm_max
-
 	);
 
 
@@ -356,6 +356,12 @@ private:
 
 	int32_t	_pwm_min_value;
 	int32_t _pwm_max_value;
+
+	float 	_omega_vel = 20.0f;
+	float	_zeta_vel  = 0.7f;
+	float	_mav_mass  = 0.703f;
+	float	_thrust_factor = 0.4785f;
+	int32_t _ndrc_enable;
 
 	int _num_update = 0;
 
@@ -760,6 +766,12 @@ MulticopterPositionControl::parameters_update(bool force)
 		/* esc parameters */
 		_pwm_min_value = _pwm_min.get();
 		_pwm_max_value = _pwm_max.get();
+
+		param_get(param_find("MC_OMEGA_VEL"), &_omega_vel);
+		param_get(param_find("MC_ZETA_VEL"), &_zeta_vel);
+		param_get(param_find("MC_MAV_MASS"), &_mav_mass);
+		param_get(param_find("MC_THRUST_FACTOR"), &_thrust_factor);
+		param_get(param_find("MC_NDRC_ENABLE"), &_ndrc_enable);
 
 	}
 
@@ -2643,10 +2655,14 @@ inline matrix::Vector3f MulticopterPositionControl::compute_actuate_thrust()
 	pwm[2] = math::constrain((_actuator_outputs.output[2] - _pwm_min_value) / pwm_amp, 0.f, 1.f);
 	pwm[3] = math::constrain((_actuator_outputs.output[3] - _pwm_min_value) / pwm_amp, 0.f, 1.f);
 	matrix::Vector<float, 4> throttle, thrust;
-	throttle(0) = (1.0f - THRUST_FACTOR) * pwm[0] + THRUST_FACTOR * pwm[0] * pwm[0];
-	throttle(1) = (1.0f - THRUST_FACTOR) * pwm[1] + THRUST_FACTOR * pwm[1] * pwm[1];
-	throttle(2) = (1.0f - THRUST_FACTOR) * pwm[2] + THRUST_FACTOR * pwm[2] * pwm[2];
-	throttle(3) = (1.0f - THRUST_FACTOR) * pwm[3] + THRUST_FACTOR * pwm[3] * pwm[3];
+//	throttle(0) = (1.0f - THRUST_FACTOR) * pwm[0] + THRUST_FACTOR * pwm[0] * pwm[0];
+//	throttle(1) = (1.0f - THRUST_FACTOR) * pwm[1] + THRUST_FACTOR * pwm[1] * pwm[1];
+//	throttle(2) = (1.0f - THRUST_FACTOR) * pwm[2] + THRUST_FACTOR * pwm[2] * pwm[2];
+//	throttle(3) = (1.0f - THRUST_FACTOR) * pwm[3] + THRUST_FACTOR * pwm[3] * pwm[3];
+	throttle(0) = (1.0f - _thrust_factor) * pwm[0] + _thrust_factor * pwm[0] * pwm[0];
+	throttle(1) = (1.0f - _thrust_factor) * pwm[1] + _thrust_factor * pwm[1] * pwm[1];
+	throttle(2) = (1.0f - _thrust_factor) * pwm[2] + _thrust_factor * pwm[2] * pwm[2];
+	throttle(3) = (1.0f - _thrust_factor) * pwm[3] + _thrust_factor * pwm[3] * pwm[3];
 	thrust = throttle * thrust_max;
 	float thrust_total = thrust(0) + thrust(1) + thrust(2) + thrust(3);
 
@@ -2712,7 +2728,8 @@ void MulticopterPositionControl::estimator_update_2rd(matrix::Vector3f x, const 
 void MulticopterPositionControl::estimator_model_2rd(matrix::Vector3f &vel, matrix::Vector3f &x1, matrix::Vector3f &x2, matrix::Vector3f &x1_dot, matrix::Vector3f &x2_dot)
 {
 	x1_dot = x2;
-	x2_dot =  (vel - x1) * OMEGA_VEL * OMEGA_VEL - x2 * 2.0f * ZETA_VEL * OMEGA_VEL;
+//	x2_dot =  (vel - x1) * OMEGA_VEL * OMEGA_VEL - x2 * 2.0f * ZETA_VEL * OMEGA_VEL;
+	x2_dot =  (vel - x1) * _omega_vel * _omega_vel - x2 * 2.0f * _zeta_vel * _omega_vel;
 }
 
 /**
@@ -2812,16 +2829,18 @@ MulticopterPositionControl::calculate_thrust_setpoint()
 			    + _thrust_int - matrix::Vector3f(0.0f, 0.0f, _thr_hover.get());
 
 		/* Compensate external disturbance forces */
-		matrix::Vector3f gravity(0.0f, 0.0f, MAV_MASS * GRA_ACC);
+//		matrix::Vector3f gravity(0.0f, 0.0f, MAV_MASS * GRA_ACC);
+		matrix::Vector3f gravity(0.0f, 0.0f, _mav_mass * GRA_ACC);
 
 		estimator_update_2rd(_vel, _dt, _x1, _x2);
-		_thrust_hat = _x2 * MAV_MASS;
+//		_thrust_hat = _x2 * MAV_MASS;
+		_thrust_hat = _x2 * _mav_mass;
 		_thrust_motor = compute_actuate_thrust();
 		estimator_update_2rd(_thrust_motor, _dt, _x1_thrust, _x2_thrust);
 		_thrust_dist = _thrust_hat - (_x1_thrust + gravity);
 
 //		estimator_update_3rd(_pos, _dt, _x1, _x2, _x3);
-//		_thrust_hat = _x3 * MAV_MASS;
+//		_thrust_hat = _x3 * _mav_mass;
 //		_thrust_motor = compute_actuate_thrust();
 //		estimator_update_3rd(_thrust_motor, _dt, _x1_thrust, _x2_thrust, _x3_thrust);
 //		_thrust_dist = _thrust_hat - (_x1_thrust + gravity);
@@ -2831,7 +2850,9 @@ MulticopterPositionControl::calculate_thrust_setpoint()
 		print_vector3("thrust_motor", _x1_thrust);
 		print_vector3("thrust_dist", _thrust_dist);
 
-		thrust_sp -= force_to_accectrl(_thrust_dist);
+		if(_ndrc_enable == 1){
+			thrust_sp -= force_to_accectrl(_thrust_dist);
+		}
 
 		/* publish estimated disturbance */
 		_ext_force.esti_dist[0] = _thrust_dist(0);
