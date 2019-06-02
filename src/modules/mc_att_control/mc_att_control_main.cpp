@@ -243,6 +243,19 @@ MulticopterAttitudeControl::parameters_updated()
 	/* esc parameters */
 	_pwm_min_value = _pwm_min.get();
 	_pwm_max_value = _pwm_max.get();
+
+	param_get(param_find("MC_OMEGA_ATT"), &_omega_att);
+	param_get(param_find("MC_ZETA_ATT"), &_zeta_att);
+	param_get(param_find("MC_HALF_LENGTH"), &_half_length);
+	param_get(param_find("MC_HALF_WIDTH"), &_half_width);
+	param_get(param_find("MC_C_M"), &_C_M);
+	param_get(param_find("MC_I_XX"), &_I_XX);
+	param_get(param_find("MC_I_YY"), &_I_YY);
+	param_get(param_find("MC_I_ZZ"), &_I_ZZ);
+	param_get(param_find("MC_THRUST_FACTOR"), &_thrust_factor);
+	param_get(param_find("MC_NDRC_ENABLE"), &_ndrc_enable);
+	param_get(param_find("MC_NDI_ENABLE"), &_ndi_enable);
+
 }
 
 void
@@ -552,21 +565,16 @@ MulticopterAttitudeControl::torque_to_attctrl(Vector3f &computed_torque)
 	};
 	Matrix<float, 4, 3> mixer_matrix(array_mixer);
 
-//	Matrix<float, 4, 3> mixer_matrix;
-//	Vector3f row_r1(-0.707107f,  0.707107f,  1.0f);
-//	Vector3f row_r2(0.707107f,  -0.707107f,  1.0f);
-//	Vector3f row_r3(0.707107f,  0.707107f,  -1.0f);
-//	Vector3f row_r4(-0.707107f,  -0.707107f,  -1.0f);
-//	mixer_matrix.setRow(0, row_r1);
-//	mixer_matrix.setRow(1, row_r2);
-//	mixer_matrix.setRow(2, row_r3);
-//	mixer_matrix.setRow(3, row_r4);
-
 	/* matrix from thrust of four propellers to torque about 3-axes */
+//	float array_torque[3][4] = {
+//			{-HALF_LENGTH, HALF_LENGTH, HALF_LENGTH, -HALF_LENGTH},
+//			{HALF_WIDTH, -HALF_WIDTH, HALF_WIDTH, -HALF_WIDTH},
+//			{C_M, C_M, -C_M, -C_M}
+//	};
 	float array_torque[3][4] = {
-			{-HALF_LENGTH, HALF_LENGTH, HALF_LENGTH, -HALF_LENGTH},
-			{HALF_WIDTH, -HALF_WIDTH, HALF_WIDTH, -HALF_WIDTH},
-			{C_M, C_M, -C_M, -C_M}
+			{-_half_length, _half_length, _half_length, -_half_length},
+			{_half_width, -_half_width, _half_width, -_half_width},
+			{_C_M, _C_M, -_C_M, -_C_M}
 	};
 	Matrix<float, 3, 4> gentrq_matrix(array_torque);
 
@@ -599,10 +607,15 @@ Vector3f
 MulticopterAttitudeControl::compute_actuate_torque()
 {
 	float thrust_max = motor_max_thrust(_battery_status.voltage_filtered_v);
+//	float array_torque[3][4] = {
+//			{-HALF_LENGTH, HALF_LENGTH, HALF_LENGTH, -HALF_LENGTH},
+//			{HALF_WIDTH, -HALF_WIDTH, HALF_WIDTH, -HALF_WIDTH},
+//			{C_M, C_M, -C_M, -C_M}
+//	};
 	float array_torque[3][4] = {
-			{-HALF_LENGTH, HALF_LENGTH, HALF_LENGTH, -HALF_LENGTH},
-			{HALF_WIDTH, -HALF_WIDTH, HALF_WIDTH, -HALF_WIDTH},
-			{C_M, C_M, -C_M, -C_M}
+			{-_half_length, _half_length, _half_length, -_half_length},
+			{_half_width, -_half_width, _half_width, -_half_width},
+			{_C_M, _C_M, -_C_M, -_C_M}
 	};
 	Matrix<float, 3, 4> gentrq_matrix(array_torque);
 	// motor thrust model:
@@ -618,10 +631,14 @@ MulticopterAttitudeControl::compute_actuate_torque()
 	pwm[2] = math::constrain((_actuator_outputs.output[2] - _pwm_min_value) / pwm_amp, 0.f, 1.f);
 	pwm[3] = math::constrain((_actuator_outputs.output[3] - _pwm_min_value) / pwm_amp, 0.f, 1.f);
 	Vector<float, 4> throttle, thrust;
-	throttle(0) = (1.0f - THRUST_FACTOR) * pwm[0] + THRUST_FACTOR * pwm[0] * pwm[0];
-	throttle(1) = (1.0f - THRUST_FACTOR) * pwm[1] + THRUST_FACTOR * pwm[1] * pwm[1];
-	throttle(2) = (1.0f - THRUST_FACTOR) * pwm[2] + THRUST_FACTOR * pwm[2] * pwm[2];
-	throttle(3) = (1.0f - THRUST_FACTOR) * pwm[3] + THRUST_FACTOR * pwm[3] * pwm[3];
+//	throttle(0) = (1.0f - THRUST_FACTOR) * pwm[0] + THRUST_FACTOR * pwm[0] * pwm[0];
+//	throttle(1) = (1.0f - THRUST_FACTOR) * pwm[1] + THRUST_FACTOR * pwm[1] * pwm[1];
+//	throttle(2) = (1.0f - THRUST_FACTOR) * pwm[2] + THRUST_FACTOR * pwm[2] * pwm[2];
+//	throttle(3) = (1.0f - THRUST_FACTOR) * pwm[3] + THRUST_FACTOR * pwm[3] * pwm[3];
+	throttle(0) = (1.0f - _thrust_factor) * pwm[0] + _thrust_factor * pwm[0] * pwm[0];
+	throttle(1) = (1.0f - _thrust_factor) * pwm[1] + _thrust_factor * pwm[1] * pwm[1];
+	throttle(2) = (1.0f - _thrust_factor) * pwm[2] + _thrust_factor * pwm[2] * pwm[2];
+	throttle(3) = (1.0f - _thrust_factor) * pwm[3] + _thrust_factor * pwm[3] * pwm[3];
 	thrust = throttle * thrust_max;
 
 //	if(_num_update%500 == 0){
@@ -676,7 +693,8 @@ void MulticopterAttitudeControl::estimator_update(Vector3f x, const float dt, Ve
 void MulticopterAttitudeControl::estimator_model(Vector3f &rates, Vector3f &x1, Vector3f &x2, Vector3f &x1_dot, Vector3f &x2_dot)
 {
 	x1_dot = x2;
-	x2_dot =  (rates - x1) * OMEGA_ATT * OMEGA_ATT - x2 * 2.0f * ZETA_ATT * OMEGA_ATT;
+//	x2_dot =  (rates - x1) * OMEGA_ATT * OMEGA_ATT - x2 * 2.0f * ZETA_ATT * OMEGA_ATT;
+	x2_dot =  (rates - x1) * _omega_att * _omega_att - x2 * 2.0f * _zeta_att * _omega_att;
 }
 
 /*
@@ -744,19 +762,12 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 		_lp_filters_d[1].apply(rates(1)),
 		_lp_filters_d[2].apply(rates(2)));
 
-//	_att_control = rates_p_scaled.emult(rates_err) +
-//		       _rates_int -
-//		       rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt +
-//		       _rate_ff.emult(_rates_sp);
-	/* using PD controller for linear part */
-	Vector3f inertia(I_XX, I_YY, I_ZZ);
-	Vector3f att_ctrl = rates_p_scaled.emult(rates_err) + _rates_int - rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt * 1.0f;
-	Vector3f torque_att_ctrl = inertia.emult(att_ctrl);
-
 	/* estimate attitude rates and accelerations */
 	estimator_update(rates, dt, _x1, _x2);
 
 	/* compute torque_hat */
+//	Vector3f inertia(I_XX, I_YY, I_ZZ);
+	Vector3f inertia(_I_XX, _I_YY, _I_ZZ);
 	_torque_hat = inertia.emult(_x2) + _x1.cross(inertia.emult(_x1));	// tao = I*w_dot + w x I*w
 
 	/* compute torque_motor through motor thrust model */
@@ -765,12 +776,6 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 
 	_torque_dist = _torque_hat - _x1_trq;
 	_torque_dist_last = _torque_dist;
-	/* compute gyro moment */
-	Vector3f torque_affix = rates.cross(inertia.emult(rates));
-
-	/* Compensate nonlinear gyro moment and disturbed moment */
-	Vector3f compen_torque = torque_affix * 1.0f - _torque_dist * 1.0f;
-//	Vector3f compen_torque = torque_affix * 1.0f - (_torque_dist - _torque_dist_last) * 1.0f;
 
 //	print_vector3("compen_torque", compen_torque, 1);
 //	print_vector3("torque_dist", _torque_dist, 1);
@@ -816,9 +821,28 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 		_v_esti_att_pub = orb_advertise(ORB_ID(vehicle_estimate_attitude), &_v_esti_att);
 	}
 
-	/* Convert torque command to normalized input */
-	torque_att_ctrl = torque_att_ctrl + compen_torque * 1.f;
-	_att_control = torque_to_attctrl(torque_att_ctrl);
+	/* control law part */
+	if(_ndi_enable == 0){
+		_att_control = rates_p_scaled.emult(rates_err) +
+				   _rates_int -
+				   rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt +
+				   _rate_ff.emult(_rates_sp);
+	} else if(_ndi_enable == 1){
+		/* using PD controller for linear part */
+		Vector3f att_ctrl = rates_p_scaled.emult(rates_err) + _rates_int - rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt * 1.0f;
+		/* compute gyro moment */
+		Vector3f torque_affix = rates.cross(inertia.emult(rates));
+		if(_ndrc_enable == 0){
+			Vector3f torque_att_ctrl = inertia.emult(att_ctrl) + torque_affix;
+			_att_control = torque_to_attctrl(torque_att_ctrl);
+		} else{
+			/* Compensate nonlinear gyro moment and disturbed moment */
+			Vector3f compen_torque = torque_affix * 1.0f - _torque_dist * 1.0f;
+			/* Convert torque command to normalized input */
+			Vector3f torque_att_ctrl = torque_att_ctrl + compen_torque * 1.f;
+			_att_control = torque_to_attctrl(torque_att_ctrl);
+		}
+	}
 
 	_rates_prev = rates;
 	_rates_prev_filtered = rates_filtered;
