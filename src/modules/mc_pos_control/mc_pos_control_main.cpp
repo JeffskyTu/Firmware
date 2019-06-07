@@ -90,8 +90,8 @@
 /**
  * Used for NDRC(nonlinear disturbance rejective control)
  */
-#define GRA_ACC			9.8066f
-#define MAV_MASS		0.703f
+#define GRA_ACC			9.7879f
+#define MAV_MASS		0.699f
 #define THRUST_FACTOR	0.4785f
 
 #define OMEGA_VEL		15.0f
@@ -361,7 +361,7 @@ private:
 	float	_zeta_vel  = 0.7f;
 	float	_mav_mass  = 0.703f;
 	float	_thrust_factor = 0.4785f;
-	int32_t _ndrc_enable;
+	int32_t _ndrc_pos_enable;
 
 	int _num_update = 0;
 
@@ -771,7 +771,7 @@ MulticopterPositionControl::parameters_update(bool force)
 		param_get(param_find("MC_ZETA_VEL"), &_zeta_vel);
 		param_get(param_find("MC_MAV_MASS"), &_mav_mass);
 		param_get(param_find("MC_THRUST_FACTOR"), &_thrust_factor);
-		param_get(param_find("MC_NDRC_ENABLE"), &_ndrc_enable);
+		param_get(param_find("MC_NDRC_POS_EN"), &_ndrc_pos_enable);
 
 	}
 
@@ -2838,6 +2838,10 @@ MulticopterPositionControl::calculate_thrust_setpoint()
 		_thrust_motor = compute_actuate_thrust();
 		estimator_update_2rd(_thrust_motor, _dt, _x1_thrust, _x2_thrust);
 		_thrust_dist = _thrust_hat - (_x1_thrust + gravity);
+		matrix::Vector3f thrust_comp;
+		thrust_comp(0) = math::constrain(_thrust_dist(0), -gravity(2), gravity(2));
+		thrust_comp(1) = math::constrain(_thrust_dist(1), -gravity(2), gravity(2));
+		thrust_comp(2) = math::constrain(_thrust_dist(2), -gravity(2), gravity(2));
 
 //		estimator_update_3rd(_pos, _dt, _x1, _x2, _x3);
 //		_thrust_hat = _x3 * _mav_mass;
@@ -2850,8 +2854,9 @@ MulticopterPositionControl::calculate_thrust_setpoint()
 		print_vector3("thrust_motor", _x1_thrust);
 		print_vector3("thrust_dist", _thrust_dist);
 
-		if(_ndrc_enable == 1){
-			thrust_sp -= force_to_accectrl(_thrust_dist);
+		if(_ndrc_pos_enable == 1 and !_vehicle_land_detected.landed){
+//			thrust_sp -= force_to_accectrl(_thrust_dist);
+			thrust_sp -= force_to_accectrl(thrust_comp);
 		}
 
 		/* publish estimated disturbance */
@@ -2879,12 +2884,16 @@ MulticopterPositionControl::calculate_thrust_setpoint()
 		}
 
 		/* publish pos/vel/acc */
+		_v_esti_pos.x = _pos(0);
+		_v_esti_pos.y = _pos(1);
+		_v_esti_pos.z = _pos(2);
 		_v_esti_pos.vx = _x1(0);
 		_v_esti_pos.vy = _x1(1);
 		_v_esti_pos.vz = _x1(2);
 		_v_esti_pos.ax = _x2(0);
 		_v_esti_pos.ay = _x2(1);
 		_v_esti_pos.az = _x2(2);
+		_v_esti_pos.dt = _dt;
 		_v_esti_pos.timestamp = hrt_absolute_time();
 
 		if(_v_esti_pos_pub != nullptr) {

@@ -26,42 +26,34 @@ param set EKF2_MAG_TYPE 1
 param set MAV_TYPE 2
 
 param set MC_ROLL_P 6.6
-param set MC_ROLLRATE_P 66
-param set MC_ROLLRATE_I 109
-param set MC_RR_INT_LIM 142
-param set MC_ROLLRATE_D 1.25
+param set MC_ROLLRATE_P 70
+param set MC_ROLLRATE_I 90
+param set MC_RR_INT_LIM 145
+param set MC_ROLLRATE_D 5.0
 param set MC_PITCH_P 7.0
-param set MC_PITCHRATE_P 66
-param set MC_PITCHRATE_I 100
-param set MC_PR_INT_LIM 142
-param set MC_PITCHRATE_D 1.25
+param set MC_PITCHRATE_P 80
+param set MC_PITCHRATE_I 60
+param set MC_PR_INT_LIM 100
+param set MC_PITCHRATE_D 5.9
 param set MC_YAW_P 4
-param set MC_YAWRATE_P 9.7
-param set MC_YAWRATE_I 6.5
-param set MC_YR_INT_LIM 9.7
+param set MC_YAWRATE_P 10
+param set MC_YAWRATE_I 5
+param set MC_YR_INT_LIM 10
 
 param set MPC_THR_HOVER 0.42
 param set MPC_XY_P 1.2
-param set MPC_XY_VEL_P 0.21
-param set MPC_XY_VEL_I 0.025
-param set MPC_XY_VEL_D 0.01
+param set MPC_XY_VEL_P 0.15
+param set MPC_XY_VEL_I 0.024
+param set MPC_XY_VEL_D 0.011
+param set MPC_Z_P  1.1
+param set MPC_Z_VEL_I 0.05
+param set MPC_Z_VEL_P 0.37
 
-param set MC_OMEGA_ATT 50
-param set MC_ZETA_ATT  0.7
-param set MC_OMEGA_VEL 20
-param set MC_ZETA_VEL  0.6
-
-param set MC_NDI_ENABLE 1
-param set MC_NDRC_ATT_EN 1
-param set MC_NDRC_POS_EN 1
- 
-param set SDLOG_PROFILE 1
+param set SDLOG_PROFILE 17
 param set THR_MDL_FAC 0.4785
 
 param set MIS_TAKEOFF_ALT 2.5
 param set MPC_HOLD_MAX_Z 2.0
-param set MPC_Z_VEL_I 0.15
-param set MPC_Z_VEL_P 0.6
 param set NAV_ACC_RAD 2.0
 param set NAV_DLL_ACT 2
 param set RTL_DESCEND_ALT 10.0
