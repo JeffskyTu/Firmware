@@ -90,15 +90,15 @@
 /**
  * Used for NDRC(nonlinear disturbance rejective control)
  */
-#define GRA_ACC			9.8066f
-#define MAV_MASS		0.703f
+#define GRA_ACC			9.7879f
+#define MAV_MASS		0.699f
 #define THRUST_FACTOR	0.4785f
 
 #define OMEGA_VEL		15.0f
 #define ZETA_VEL		0.8f
-#define OMEGA_POS1		20.0f
-#define OMEGA_POS2		20.0f
-#define ZETA_POS		0.8f
+#define OMEGA_POS1		10.0f
+#define OMEGA_POS2		50.0f
+#define ZETA_POS		0.7f
 
 //using namespace matrix;
 
@@ -361,7 +361,7 @@ private:
 	float	_zeta_vel  = 0.7f;
 	float	_mav_mass  = 0.703f;
 	float	_thrust_factor = 0.4785f;
-	int32_t _ndrc_enable;
+	int32_t _ndrc_pos_enable;
 
 	int _num_update = 0;
 
@@ -771,7 +771,7 @@ MulticopterPositionControl::parameters_update(bool force)
 		param_get(param_find("MC_ZETA_VEL"), &_zeta_vel);
 		param_get(param_find("MC_MAV_MASS"), &_mav_mass);
 		param_get(param_find("MC_THRUST_FACTOR"), &_thrust_factor);
-		param_get(param_find("MC_NDRC_ENABLE"), &_ndrc_enable);
+		param_get(param_find("MC_NDRC_POS_EN"), &_ndrc_pos_enable);
 
 	}
 
@@ -2620,7 +2620,6 @@ MulticopterPositionControl::calculate_velocity_setpoint()
 	_vel_sp_prev = _vel_sp;
 }
 
-
 /**
  * Motor thrust model
  */
@@ -2714,7 +2713,6 @@ void MulticopterPositionControl::estimator_update_2rd(matrix::Vector3f x, const 
 
 	x1 += (x1_dot_1 + x1_dot_2 * 2.0f + x1_dot_3 * 2.0f + x1_dot_4) * dt/6.0f;
 	x2 += (x2_dot_1 + x2_dot_2 * 2.0f + x2_dot_3 * 2.0f + x2_dot_4) * dt/6.0f;
-
 }
 
 /**
@@ -2832,12 +2830,15 @@ MulticopterPositionControl::calculate_thrust_setpoint()
 //		matrix::Vector3f gravity(0.0f, 0.0f, MAV_MASS * GRA_ACC);
 		matrix::Vector3f gravity(0.0f, 0.0f, _mav_mass * GRA_ACC);
 
+		// without prediction
 		estimator_update_2rd(_vel, _dt, _x1, _x2);
 //		_thrust_hat = _x2 * MAV_MASS;
 		_thrust_hat = _x2 * _mav_mass;
-		_thrust_motor = compute_actuate_thrust();
+//		_thrust_motor = compute_actuate_thrust();
+		_thrust_motor = compute_actuate_thrust() + gravity;
 		estimator_update_2rd(_thrust_motor, _dt, _x1_thrust, _x2_thrust);
-		_thrust_dist = _thrust_hat - (_x1_thrust + gravity);
+//		_thrust_dist = _thrust_hat - (_x1_thrust + gravity);
+		_thrust_dist = _thrust_hat - _x1_thrust;
 
 //		estimator_update_3rd(_pos, _dt, _x1, _x2, _x3);
 //		_thrust_hat = _x3 * _mav_mass;
@@ -2845,13 +2846,28 @@ MulticopterPositionControl::calculate_thrust_setpoint()
 //		estimator_update_3rd(_thrust_motor, _dt, _x1_thrust, _x2_thrust, _x3_thrust);
 //		_thrust_dist = _thrust_hat - (_x1_thrust + gravity);
 
+//		// with prediction
+//		estimator_update_3rd(_vel, _dt, _x1, _x2, _x3);
+//		matrix::Vector3f acc_flt = _x2 + _x3 * (1.0f / OMEGA_POS1);
+//		_thrust_hat = acc_flt * _mav_mass;
+//		_thrust_motor = compute_actuate_thrust();
+//		estimator_update_3rd(_thrust_motor, _dt, _x1_thrust, _x2_thrust, _x3_thrust);
+//		matrix::Vector3f thrust_flt = _x1_thrust + _x2_thrust * (1.0f / OMEGA_POS1);
+//		_thrust_dist = _thrust_hat - (thrust_flt + gravity);
+
+		matrix::Vector3f thrust_comp;
+		thrust_comp(0) = math::constrain(_thrust_dist(0), -gravity(2), gravity(2));
+		thrust_comp(1) = math::constrain(_thrust_dist(1), -gravity(2), gravity(2));
+		thrust_comp(2) = math::constrain(_thrust_dist(2), -gravity(2), gravity(2));
+
 		print_vector3("acc", _x2, 1);
 		print_vector3("thrust_hat", _thrust_hat);
 		print_vector3("thrust_motor", _x1_thrust);
 		print_vector3("thrust_dist", _thrust_dist);
 
-		if(_ndrc_enable == 1){
-			thrust_sp -= force_to_accectrl(_thrust_dist);
+		if(_ndrc_pos_enable == 1 and !_vehicle_land_detected.landed){
+//			thrust_sp -= force_to_accectrl(_thrust_dist);
+			thrust_sp -= force_to_accectrl(thrust_comp);
 		}
 
 		/* publish estimated disturbance */
@@ -2879,12 +2895,16 @@ MulticopterPositionControl::calculate_thrust_setpoint()
 		}
 
 		/* publish pos/vel/acc */
+		_v_esti_pos.x = _pos(0);
+		_v_esti_pos.y = _pos(1);
+		_v_esti_pos.z = _pos(2);
 		_v_esti_pos.vx = _x1(0);
 		_v_esti_pos.vy = _x1(1);
 		_v_esti_pos.vz = _x1(2);
 		_v_esti_pos.ax = _x2(0);
 		_v_esti_pos.ay = _x2(1);
 		_v_esti_pos.az = _x2(2);
+		_v_esti_pos.dt = _dt;
 		_v_esti_pos.timestamp = hrt_absolute_time();
 
 		if(_v_esti_pos_pub != nullptr) {
@@ -3361,7 +3381,6 @@ MulticopterPositionControl::task_main()
 		const float dt = t_prev != 0 ? (t - t_prev) / 1e6f : 0.004f;
 		t_prev = t;
 
-//		PX4_INFO("position control loop: 10000*dt = %d", (int)(dt * 10000.0f));
 		/* set dt for control blocks */
 		setDt(dt);
 

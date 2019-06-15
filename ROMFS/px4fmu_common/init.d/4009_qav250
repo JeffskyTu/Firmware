@@ -12,24 +12,71 @@ sh /etc/init.d/4001_quad_x
 
 if [ $AUTOCNF == yes ]
 then
-	param set MC_ROLL_P 6.0
-	param set MC_ROLLRATE_P 0.14
-	param set MC_ROLLRATE_I 0.23
-	param set MC_ROLLRATE_D 0.0025
+#	param set MC_ROLL_P 6.0
+#	param set MC_ROLLRATE_P 0.14
+#	param set MC_ROLLRATE_I 0.23
+#	param set MC_ROLLRATE_D 0.0025
+#	param set MC_PITCH_P 7.0
+#	param set MC_PITCHRATE_P 0.235
+#	param set MC_PITCHRATE_I 0.17
+#	param set MC_PITCHRATE_D 0.004
+#	param set MC_YAW_P 4
+#	param set MC_YAWRATE_P 0.3
+#	param set MC_YAWRATE_I 0.2
+#	param set MC_YAWRATE_D 0.0
+#	param set MC_YAW_FF 0.5
+#	param set PWM_MIN 1075
+#	param set MPC_THR_MIN 0.06
+#	param set MPC_MANTHR_MIN 0.06
+#	param set CBRK_IO_SAFETY 22027
+#	param set ATT_BIAS_MAX 0.0
+#	param set MC_TPA_BREAK_P 0.5
+#	param set MC_TPA_RATE_P 0.5
+
+
+	param set MC_ROLL_P 6.6
+	param set MC_ROLLRATE_P 70
+	param set MC_ROLLRATE_I 90
+	param set MC_RR_INT_LIM 145
+	param set MC_ROLLRATE_D 5.0
 	param set MC_PITCH_P 7.0
-	param set MC_PITCHRATE_P 0.235
-	param set MC_PITCHRATE_I 0.17
-	param set MC_PITCHRATE_D 0.004
+	param set MC_PITCHRATE_P 80
+	param set MC_PITCHRATE_I 60
+	param set MC_PR_INT_LIM 100
+	param set MC_PITCHRATE_D 5.9
 	param set MC_YAW_P 4
-	param set MC_YAWRATE_P 0.3
-	param set MC_YAWRATE_I 0.2
-	param set MC_YAWRATE_D 0.0
-	param set MC_YAW_FF 0.5
-	param set PWM_MIN 1075
-	param set MPC_THR_MIN 0.06
-	param set MPC_MANTHR_MIN 0.06
-	param set CBRK_IO_SAFETY 22027
-	param set ATT_BIAS_MAX 0.0
-	param set MC_TPA_BREAK_P 0.5
-	param set MC_TPA_RATE_P 0.5
+	param set MC_YAWRATE_P 10
+	param set MC_YAWRATE_I 5
+	param set MC_YR_INT_LIM 10
+	
+	param set MPC_THR_HOVER 0.42
+	param set MPC_XY_P 1.2
+	param set MPC_XY_VEL_P 0.15
+	param set MPC_XY_VEL_I 0.024
+	param set MPC_XY_VEL_D 0.011
+	param set MPC_Z_P  1.1
+	param set MPC_Z_VEL_I 0.05
+	param set MPC_Z_VEL_P 0.37
+	
+	param set SDLOG_PROFILE 17
+	param set THR_MDL_FAC 0.4785
+	
+	param set MC_OMEGA_ATT 40
+	param set MC_ZETA_ATT  0.7
+	param set MC_OMEGA_VEL 15
+	param set MC_ZETA_VEL  0.7
+	
+	param set MC_NDI_ENABLE 1
+	param set MC_NDRC_ATT_EN 1
+	param set MC_NDRC_POS_EN 1
+	
+	param set EKF2_AID_MASK 24
+	
+	
+	# modified for ndrc test
+	mavlink start -d /dev/ttyS2 -b 921600 -m onboard -r 80000
+	mavlink stream -d /dev/ttyS2 -s VISION_POSITION_ESTIMATE -r 100
+	mavlink stream -d /dev/ttyS2 -s EXTERNAL_WRENCH_ESTIMATE -r 50
+	mavlink stream -d /dev/ttyS2 -s ADDITIONAL_WRENCH_SETPOINT -r 50
+	
 fi
