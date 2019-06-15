@@ -253,7 +253,7 @@ MulticopterAttitudeControl::parameters_updated()
 	param_get(param_find("MC_I_YY"), &_I_YY);
 	param_get(param_find("MC_I_ZZ"), &_I_ZZ);
 	param_get(param_find("MC_THRUST_FACTOR"), &_thrust_factor);
-	param_get(param_find("MC_NDRC_ENABLE"), &_ndrc_enable);
+	param_get(param_find("MC_NDRC_ATT_EN"), &_ndrc_att_enable);
 	param_get(param_find("MC_NDI_ENABLE"), &_ndi_enable);
 
 }
@@ -749,9 +749,7 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 	Vector3f rates_i_scaled = _rate_i;
 	Vector3f rates_d_scaled = _rate_d;
 
-//	PX4_INFO("10000*rates(0) = %d", (int)(rates(0) * 10000.0f));
-//	PX4_INFO("10000*rates(1) = %d", (int)(rates(1) * 10000.0f));
-//	PX4_INFO("10000*rates(2) = %d", (int)(rates(2) * 10000.0f));
+//	PX4_INFO("dt = %8.6f", (double)dt);
 
 	/* angular rates error */
 	Vector3f rates_err = _rates_sp - rates;
@@ -813,6 +811,7 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 	_v_esti_att.rollacc = _x2(0);
 	_v_esti_att.pitchacc = _x2(1);
 	_v_esti_att.yawacc = _x2(2);
+	_v_esti_att.dt = dt;
 	_v_esti_att.timestamp = hrt_absolute_time();
 
 	if(_v_esti_att_pub != nullptr) {
@@ -832,14 +831,14 @@ MulticopterAttitudeControl::control_attitude_rates(float dt)
 		Vector3f att_ctrl = rates_p_scaled.emult(rates_err) + _rates_int - rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt * 1.0f;
 		/* compute gyro moment */
 		Vector3f torque_affix = rates.cross(inertia.emult(rates));
-		if(_ndrc_enable == 0){
+		if(_ndrc_att_enable == 0){
 			Vector3f torque_att_ctrl = inertia.emult(att_ctrl) + torque_affix;
 			_att_control = torque_to_attctrl(torque_att_ctrl);
 		} else{
 			/* Compensate nonlinear gyro moment and disturbed moment */
 			Vector3f compen_torque = torque_affix * 1.0f - _torque_dist * 1.0f;
 			/* Convert torque command to normalized input */
-			Vector3f torque_att_ctrl = torque_att_ctrl + compen_torque * 1.f;
+			Vector3f torque_att_ctrl = inertia.emult(att_ctrl) + compen_torque * 1.f;
 			_att_control = torque_to_attctrl(torque_att_ctrl);
 		}
 	}

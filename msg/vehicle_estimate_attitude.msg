@@ -11,3 +11,6 @@ float32 yawspeed
 float32 rollacc
 float32 pitchacc
 float32 yawacc
+
+# Log dt
+float32 dt

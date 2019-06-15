@@ -15,3 +15,6 @@ float32 vz				# Down velocity in NED earth-fixed frame, (metres/sec)
 float32 ax        		# North velocity derivative in NED earth-fixed frame, (metres/sec^2)
 float32 ay        		# East velocity derivative in NED earth-fixed frame, (metres/sec^2)
 float32 az        		# Down velocity derivative in NED earth-fixed frame, (metres/sec^2)
+
+# Log dt
+float32 dt

@@ -2042,6 +2042,7 @@ Mavlink::task_main(int argc, char *argv[])
 		configure_stream("VFR_HUD", 4.0f);
 		configure_stream("VISION_POSITION_ESTIMATE", 1.0f);
 		configure_stream("WIND_COV", 1.0f);
+		configure_stream("EXTERNAL_WRENCH_ESTIMATE", 1.0f);
 		break;
 
 	case MAVLINK_MODE_ONBOARD:
@@ -2080,6 +2081,7 @@ Mavlink::task_main(int argc, char *argv[])
 		configure_stream("VFR_HUD", 10.0f);
 		configure_stream("VISION_POSITION_ESTIMATE", 10.0f);
 		configure_stream("WIND_COV", 10.0f);
+		configure_stream("EXTERNAL_WRENCH_ESTIMATE", 50.0f);
 		break;
 
 	case MAVLINK_MODE_OSD:
@@ -2139,6 +2141,7 @@ Mavlink::task_main(int argc, char *argv[])
 		configure_stream("VFR_HUD", 20.0f);
 		configure_stream("VISION_POSITION_ESTIMATE", 10.0f);
 		configure_stream("WIND_COV", 10.0f);
+		configure_stream("EXTERNAL_WRENCH_ESTIMATE", 50.0f);
 		break;
 
 	case MAVLINK_MODE_IRIDIUM:

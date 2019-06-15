@@ -348,6 +348,10 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 		handle_message_debug_vect(msg);
 		break;
 
+	case MAVLINK_MSG_ID_ADDITIONAL_WRENCH_SETPOINT:
+		handle_message_additional_wrench_setpoint(msg);
+		break;
+
 	default:
 		break;
 	}
@@ -2449,6 +2453,30 @@ void MavlinkReceiver::handle_message_debug_vect(mavlink_message_t *msg)
 	} else {
 		orb_publish(ORB_ID(debug_vect), _debug_vect_pub, &debug_topic);
 	}
+}
+
+void MavlinkReceiver::handle_message_additional_wrench_setpoint(mavlink_message_t *msg)
+{
+	mavlink_additional_wrench_setpoint_t add_wrench_msg;
+	additional_wrench_s add_wrench_topic = {};
+
+	mavlink_msg_additional_wrench_setpoint_decode(msg, &add_wrench_msg);
+
+	add_wrench_topic.timestamp = hrt_absolute_time();
+	add_wrench_topic.force[0] = add_wrench_msg.force[0];
+	add_wrench_topic.force[1] = add_wrench_msg.force[1];
+	add_wrench_topic.force[2] = add_wrench_msg.force[2];
+	add_wrench_topic.torque[0] = add_wrench_msg.torque[0];
+	add_wrench_topic.torque[1] = add_wrench_msg.torque[1];
+	add_wrench_topic.torque[2] = add_wrench_msg.torque[2];
+
+	if (_additional_wrench_sp_pub == nullptr) {
+		_additional_wrench_sp_pub = orb_advertise(ORB_ID(additional_wrench), &add_wrench_topic);
+
+	} else {
+		orb_publish(ORB_ID(additional_wrench), _additional_wrench_sp_pub, &add_wrench_topic);
+	}
+
 }
 
 /**

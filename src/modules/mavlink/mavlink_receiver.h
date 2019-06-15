@@ -80,6 +80,10 @@
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/additional_wrench.h>
+
+//#include <v2.0/custom_messages/mavlink.h>
+#include <v2.0/custom_messages/mavlink_msg_additional_wrench_setpoint.h>
 
 #include "mavlink_ftp.h"
 #include "mavlink_log_handler.h"
@@ -160,6 +164,7 @@ private:
 	void handle_message_named_value_float(mavlink_message_t *msg);
 	void handle_message_debug(mavlink_message_t *msg);
 	void handle_message_debug_vect(mavlink_message_t *msg);
+	void handle_message_additional_wrench_setpoint(mavlink_message_t *msg);
 
 	void *receive_thread(void *arg);
 
@@ -240,6 +245,7 @@ private:
 	orb_advert_t _debug_key_value_pub;
 	orb_advert_t _debug_value_pub;
 	orb_advert_t _debug_vect_pub;
+	orb_advert_t _additional_wrench_sp_pub;
 	static const int _gps_inject_data_queue_size = 6;
 	orb_advert_t _gps_inject_data_pub;
 	orb_advert_t _command_ack_pub;

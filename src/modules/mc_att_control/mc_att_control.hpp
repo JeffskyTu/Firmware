@@ -321,7 +321,7 @@ private:
 	float	_I_YY	= 2.7e-3f;
 	float	_I_ZZ	= 6e-3f;
 	float	_thrust_factor = 0.4785f;
-	int32_t _ndrc_enable;
+	int32_t _ndrc_att_enable;
 	int32_t _ndi_enable;
 
 

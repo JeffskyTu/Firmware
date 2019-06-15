@@ -682,6 +682,10 @@ void Logger::add_high_rate_topics()
 	add_topic("vehicle_attitude");
 	add_topic("vehicle_attitude_setpoint");
 	add_topic("vehicle_rates_setpoint");
+	add_topic("estimate_force");
+	add_topic("estimate_torque");
+	add_topic("vehicle_estimate_position");
+	add_topic("vehicle_estimate_attitude");
 }
 
 void Logger::add_debug_topics()
@@ -732,6 +736,10 @@ void Logger::add_system_identification_topics()
 	add_topic("actuator_controls_0");
 	add_topic("actuator_controls_1");
 	add_topic("sensor_combined");
+	add_topic("estimate_force");
+	add_topic("estimate_torque");
+	add_topic("vehicle_estimate_position");
+	add_topic("vehicle_estimate_attitude");
 }
 
 int Logger::add_topics_from_file(const char *fname)

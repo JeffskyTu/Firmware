@@ -135,6 +135,7 @@ set(msg_files
 	estimate_disturb.msg
 	vehicle_estimate_position.msg
 	vehicle_estimate_attitude.msg
+	additional_wrench.msg
 	)
 
 if(NOT EXTERNAL_MODULES_LOCATION STREQUAL "")

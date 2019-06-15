@@ -101,7 +101,11 @@
 #include <uORB/topics/sensor_gyro.h>
 #include <uORB/topics/vehicle_air_data.h>
 #include <uORB/topics/vehicle_magnetometer.h>
+#include <uORB/topics/estimate_disturb.h>
 #include <uORB/uORB.h>
+
+//#include <v2.0/custom_messages/mavlink.h>
+#include <v2.0/custom_messages/mavlink_msg_external_wrench_estimate.h>
 
 using matrix::wrap_2pi;
 
@@ -913,7 +917,6 @@ protected:
 		return false;
 	}
 };
-
 
 class MavlinkStreamAttitudeQuaternion : public MavlinkStream
 {
@@ -4122,6 +4125,104 @@ protected:
 	}
 };
 
+class MavlinkStreamEstimateDisturb : public MavlinkStream
+{
+public:
+	const char *get_name() const
+	{
+		return MavlinkStreamEstimateDisturb::get_name_static();
+	}
+
+	static const char *get_name_static()
+	{
+		return "EXTERNAL_WRENCH_ESTIMATE";
+	}
+
+	static uint16_t get_id_static()
+	{
+		return MAVLINK_MSG_ID_EXTERNAL_WRENCH_ESTIMATE;
+	}
+
+	uint16_t get_id()
+	{
+		return get_id_static();
+	}
+
+	static MavlinkStream *new_instance(Mavlink *mavlink)
+	{
+		return new MavlinkStreamEstimateDisturb(mavlink);
+	}
+
+	unsigned get_size()
+	{
+		return MAVLINK_MSG_ID_EXTERNAL_WRENCH_ESTIMATE_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES;
+	}
+
+private:
+	MavlinkOrbSubscription *_ext_force_sub;
+	MavlinkOrbSubscription *_ext_torque_sub;
+	uint64_t _ext_force_time;
+	uint64_t _ext_torque_time;
+
+	/* do not allow top copying this class */
+	MavlinkStreamEstimateDisturb(MavlinkStreamEstimateDisturb &) = delete;
+	MavlinkStreamEstimateDisturb &operator = (const MavlinkStreamEstimateDisturb &) = delete;
+
+protected:
+	explicit MavlinkStreamEstimateDisturb(Mavlink *mavlink) : MavlinkStream(mavlink),
+		_ext_force_sub(_mavlink->add_orb_subscription(ORB_ID(estimate_force))),
+		_ext_torque_sub(_mavlink->add_orb_subscription(ORB_ID(estimate_torque))),
+		_ext_force_time(0),
+		_ext_torque_time(0)
+	{}
+
+	bool send(const hrt_abstime t)
+	{
+		estimate_disturb_s	ext_force, ext_torque;
+
+		if (_ext_force_sub->update(&_ext_force_time, &ext_force)) {
+			mavlink_external_wrench_estimate_t msg = {};
+
+			msg.time_usec = ext_force.timestamp;
+			msg.force[0] = ext_force.esti_dist[0];
+			msg.force[1] = ext_force.esti_dist[1];
+			msg.force[2] = ext_force.esti_dist[2];
+//			msg.force_hat[0] = ext_force.ft_hat[0];
+//			msg.force_hat[1] = ext_force.ft_hat[1];
+//			msg.force_hat[2] = ext_force.ft_hat[2];
+//			msg.force_motor[0] = ext_force.ft_motor[0];
+//			msg.force_motor[1] = ext_force.ft_motor[1];
+//			msg.force_motor[2] = ext_force.ft_motor[2];
+//			msg.force_motor_flt[0] = ext_force.ft_motor_filter[0];
+//			msg.force_motor_flt[1] = ext_force.ft_motor_filter[1];
+//			msg.force_motor_flt[2] = ext_force.ft_motor_filter[2];
+
+			if (_ext_torque_sub->update(&_ext_torque_time, &ext_torque)) {
+//				msg.time_usec = ext_torque.timestamp;
+				msg.torque[0] = ext_torque.esti_dist[0];
+				msg.torque[1] = ext_torque.esti_dist[1];
+				msg.torque[2] = ext_torque.esti_dist[2];
+//				msg.torque_hat[0] = ext_torque.ft_hat[0];
+//				msg.torque_hat[1] = ext_torque.ft_hat[1];
+//				msg.torque_hat[2] = ext_torque.ft_hat[2];
+//				msg.torque_motor[0] = ext_torque.ft_motor[0];
+//				msg.torque_motor[1] = ext_torque.ft_motor[1];
+//				msg.torque_motor[2] = ext_torque.ft_motor[2];
+//				msg.torque_motor_flt[0] = ext_torque.ft_motor_filter[0];
+//				msg.torque_motor_flt[1] = ext_torque.ft_motor_filter[1];
+//				msg.torque_motor_flt[2] = ext_torque.ft_motor_filter[2];
+			}
+
+			mavlink_msg_external_wrench_estimate_send_struct(_mavlink->get_channel(), &msg);
+
+			return true;
+		}
+
+		return false;
+	}
+};
+
+
 static const StreamListItem streams_list[] = {
 	StreamListItem(&MavlinkStreamHeartbeat::new_instance, &MavlinkStreamHeartbeat::get_name_static, &MavlinkStreamHeartbeat::get_id_static),
 	StreamListItem(&MavlinkStreamStatustext::new_instance, &MavlinkStreamStatustext::get_name_static, &MavlinkStreamStatustext::get_id_static),
@@ -4173,7 +4274,8 @@ static const StreamListItem streams_list[] = {
 	StreamListItem(&MavlinkStreamMountOrientation::new_instance, &MavlinkStreamMountOrientation::get_name_static, &MavlinkStreamMountOrientation::get_id_static),
 	StreamListItem(&MavlinkStreamHighLatency2::new_instance, &MavlinkStreamHighLatency2::get_name_static, &MavlinkStreamHighLatency2::get_id_static),
 	StreamListItem(&MavlinkStreamGroundTruth::new_instance, &MavlinkStreamGroundTruth::get_name_static, &MavlinkStreamGroundTruth::get_id_static),
-	StreamListItem(&MavlinkStreamPing::new_instance, &MavlinkStreamPing::get_name_static, &MavlinkStreamPing::get_id_static)
+	StreamListItem(&MavlinkStreamPing::new_instance, &MavlinkStreamPing::get_name_static, &MavlinkStreamPing::get_id_static),
+	StreamListItem(&MavlinkStreamEstimateDisturb::new_instance, &MavlinkStreamEstimateDisturb::get_name_static, &MavlinkStreamEstimateDisturb::get_id_static)
 };
 
 const char *get_stream_name(const uint16_t msg_id)
