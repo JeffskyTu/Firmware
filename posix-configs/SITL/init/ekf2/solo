@@ -26,25 +26,25 @@ param set EKF2_MAG_TYPE 1
 param set MAV_TYPE 2
 
 param set MC_ROLL_P 6.6
-param set MC_ROLLRATE_P 66
-param set MC_ROLLRATE_I 109
+param set MC_ROLLRATE_P 45		# 66
+param set MC_ROLLRATE_I 40		# 109
 param set MC_RR_INT_LIM 142
-param set MC_ROLLRATE_D 1.25
+param set MC_ROLLRATE_D 0.8	# 1.25
 param set MC_PITCH_P 7.0
-param set MC_PITCHRATE_P 66
-param set MC_PITCHRATE_I 100
+param set MC_PITCHRATE_P 50		# 66
+param set MC_PITCHRATE_I 40	# 100
 param set MC_PR_INT_LIM 142
-param set MC_PITCHRATE_D 1.25
+param set MC_PITCHRATE_D 0.8	#1.25
 param set MC_YAW_P 4
-param set MC_YAWRATE_P 9.7
-param set MC_YAWRATE_I 6.5
+param set MC_YAWRATE_P 7.2	# 9.7
+param set MC_YAWRATE_I 3.6	# 6.5
 param set MC_YR_INT_LIM 9.7
 
 param set MPC_THR_HOVER 0.42
-param set MPC_XY_P 1.2
-param set MPC_XY_VEL_P 0.21
-param set MPC_XY_VEL_I 0.025
-param set MPC_XY_VEL_D 0.01
+param set MPC_XY_P 0.42		# 1.2
+param set MPC_XY_VEL_P 0.11  # 0.21
+param set MPC_XY_VEL_I 0.022
+param set MPC_XY_VEL_D 0.009
 
 param set MC_OMEGA_ATT 50
 param set MC_ZETA_ATT  0.7
@@ -101,8 +101,8 @@ mavlink stream -r 50 -s SERVO_OUTPUT_RAW_0 -u 14556
 mavlink stream -r 20 -s RC_CHANNELS -u 14556
 mavlink stream -r 250 -s HIGHRES_IMU -u 14556
 mavlink stream -r 10 -s OPTICAL_FLOW_RAD -u 14556
-mavlink stream -r 250 -s EXTERNAL_WRENCH_ESTIMATE -u 14557
-mavlink stream -r 250 -s ADDITIONAL_WRENCH_SETPOINT -u 14557
+mavlink stream -r 250 -s EXTERNAL_WRENCH_ESTIMATE -u 14556
+mavlink stream -r 250 -s ADDITIONAL_WRENCH_SETPOINT -u 14556
 logger start -e -t
 mavlink boot_complete
 replay trystart

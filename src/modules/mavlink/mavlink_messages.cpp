@@ -4180,41 +4180,42 @@ protected:
 	{
 		estimate_disturb_s	ext_force, ext_torque;
 
-		if (_ext_force_sub->update(&_ext_force_time, &ext_force)) {
+		if (_ext_torque_sub->update(&_ext_torque_time, &ext_torque)) {
+
 			mavlink_external_wrench_estimate_t msg = {};
 
-			msg.time_usec = ext_force.timestamp;
-			msg.force[0] = ext_force.esti_dist[0];
-			msg.force[1] = ext_force.esti_dist[1];
-			msg.force[2] = ext_force.esti_dist[2];
-//			msg.force_hat[0] = ext_force.ft_hat[0];
-//			msg.force_hat[1] = ext_force.ft_hat[1];
-//			msg.force_hat[2] = ext_force.ft_hat[2];
-//			msg.force_motor[0] = ext_force.ft_motor[0];
-//			msg.force_motor[1] = ext_force.ft_motor[1];
-//			msg.force_motor[2] = ext_force.ft_motor[2];
-//			msg.force_motor_flt[0] = ext_force.ft_motor_filter[0];
-//			msg.force_motor_flt[1] = ext_force.ft_motor_filter[1];
-//			msg.force_motor_flt[2] = ext_force.ft_motor_filter[2];
+			msg.time_usec = ext_torque.timestamp;
+			msg.torque[0] = ext_torque.esti_dist[0];
+			msg.torque[1] = ext_torque.esti_dist[1];
+			msg.torque[2] = ext_torque.esti_dist[2];
+//			msg.torque_hat[0] = ext_torque.ft_hat[0];
+//			msg.torque_hat[1] = ext_torque.ft_hat[1];
+//			msg.torque_hat[2] = ext_torque.ft_hat[2];
+//			msg.torque_motor[0] = ext_torque.ft_motor[0];
+//			msg.torque_motor[1] = ext_torque.ft_motor[1];
+//			msg.torque_motor[2] = ext_torque.ft_motor[2];
+//			msg.torque_motor_flt[0] = ext_torque.ft_motor_filter[0];
+//			msg.torque_motor_flt[1] = ext_torque.ft_motor_filter[1];
+//			msg.torque_motor_flt[2] = ext_torque.ft_motor_filter[2];
 
-			if (_ext_torque_sub->update(&_ext_torque_time, &ext_torque)) {
-//				msg.time_usec = ext_torque.timestamp;
-				msg.torque[0] = ext_torque.esti_dist[0];
-				msg.torque[1] = ext_torque.esti_dist[1];
-				msg.torque[2] = ext_torque.esti_dist[2];
-//				msg.torque_hat[0] = ext_torque.ft_hat[0];
-//				msg.torque_hat[1] = ext_torque.ft_hat[1];
-//				msg.torque_hat[2] = ext_torque.ft_hat[2];
-//				msg.torque_motor[0] = ext_torque.ft_motor[0];
-//				msg.torque_motor[1] = ext_torque.ft_motor[1];
-//				msg.torque_motor[2] = ext_torque.ft_motor[2];
-//				msg.torque_motor_flt[0] = ext_torque.ft_motor_filter[0];
-//				msg.torque_motor_flt[1] = ext_torque.ft_motor_filter[1];
-//				msg.torque_motor_flt[2] = ext_torque.ft_motor_filter[2];
+			if (_ext_force_sub->update(&_ext_force_time, &ext_force)) {
+
+//				msg.time_usec = ext_force.timestamp;
+				msg.force[0] = ext_force.esti_dist[0];
+				msg.force[1] = ext_force.esti_dist[1];
+				msg.force[2] = ext_force.esti_dist[2];
+//				msg.force_hat[0] = ext_force.ft_hat[0];
+//				msg.force_hat[1] = ext_force.ft_hat[1];
+//				msg.force_hat[2] = ext_force.ft_hat[2];
+//				msg.force_motor[0] = ext_force.ft_motor[0];
+//				msg.force_motor[1] = ext_force.ft_motor[1];
+//				msg.force_motor[2] = ext_force.ft_motor[2];
+//				msg.force_motor_flt[0] = ext_force.ft_motor_filter[0];
+//				msg.force_motor_flt[1] = ext_force.ft_motor_filter[1];
+//				msg.force_motor_flt[2] = ext_force.ft_motor_filter[2];
 			}
 
 			mavlink_msg_external_wrench_estimate_send_struct(_mavlink->get_channel(), &msg);
-
 			return true;
 		}
 

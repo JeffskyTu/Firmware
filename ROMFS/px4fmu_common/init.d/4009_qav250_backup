@@ -34,17 +34,17 @@ then
 #	param set MC_TPA_RATE_P 0.5
 
 
-	param set MC_ROLL_P 5.2
-	param set MC_ROLLRATE_P 20	# 70
-	param set MC_ROLLRATE_I 10	# 85
+	param set MC_ROLL_P 6.6
+	param set MC_ROLLRATE_P 30	# 70
+	param set MC_ROLLRATE_I 20	# 85
 	param set MC_RR_INT_LIM 100	# 140
-	param set MC_ROLLRATE_D 1.5 # 1.25
+	param set MC_ROLLRATE_D 2.5 # 1.25
 	
-	param set MC_PITCH_P 5.2
-	param set MC_PITCHRATE_P 20 # 80
-	param set MC_PITCHRATE_I 10 # 60
+	param set MC_PITCH_P 7.0
+	param set MC_PITCHRATE_P 30 # 80
+	param set MC_PITCHRATE_I 20 # 60
 	param set MC_PR_INT_LIM 100 # 100
-	param set MC_PITCHRATE_D 1.5 # 1.25
+	param set MC_PITCHRATE_D 2.5 # 1.25
 	
 	param set MC_YAW_P 3.0	# 3.8
 	param set MC_YAWRATE_P 7	# 10
@@ -52,12 +52,12 @@ then
 	param set MC_YR_INT_LIM 10
 	
 	param set MPC_THR_HOVER 0.42
-	param set MPC_XY_P 1.0
-	param set MPC_XY_VEL_P 0.11
-	param set MPC_XY_VEL_I 0.02  # 0.024
-	param set MPC_XY_VEL_D 0.006 # 0.01
-	param set MPC_Z_P  1.0
-	param set MPC_Z_VEL_P 0.22	# 0.37
+	param set MPC_XY_P 1.2
+	param set MPC_XY_VEL_P 0.15
+	param set MPC_XY_VEL_I 0.03  # 0.024
+	param set MPC_XY_VEL_D 0.008 # 0.01
+	param set MPC_Z_P  1.1
+	param set MPC_Z_VEL_P 0.25	# 0.37
 	param set MPC_Z_VEL_I 0.06	# 0.05
 	
 	param set SDLOG_PROFILE 17

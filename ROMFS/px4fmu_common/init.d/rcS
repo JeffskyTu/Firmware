@@ -638,7 +638,7 @@ fi
 				 mavlink start -d ${MAVLINK_COMPANION_DEVICE} -b 921600 -m onboard -r 80000 -x -f
 			fi
 		else
-			mavlink start -d ${MAVLINK_COMPANION_DEVICE} -b 921600 -m onboard -r 80000 -x -f
+			mavlink start -d ${MAVLINK_COMPANION_DEVICE} -b 921600 -m onboard -r 80000 -x -f	
 		fi
 	fi
 	if param compare SYS_COMPANION 57600
@@ -700,7 +700,7 @@ fi
 	fi
 	if param compare SYS_COMPANION 1921600
 	then
-		mavlink start -d ${MAVLINK_COMPANION_DEVICE} -b 921600 -r 20000
+		mavlink start -d ${MAVLINK_COMPANION_DEVICE} -b 921600 -r 20000	
 	fi
 	if param compare SYS_COMPANION 1500000
 	then

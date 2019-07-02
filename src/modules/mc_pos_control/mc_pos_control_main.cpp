@@ -2625,8 +2625,8 @@ MulticopterPositionControl::calculate_velocity_setpoint()
  */
 inline float MulticopterPositionControl::motor_max_thrust(float battery_voltage)
 {
-	if(battery_voltage < 11.1f){
-		battery_voltage = 11.1f;
+	if(battery_voltage < 10.9f){
+		battery_voltage = 10.9f;
 	} else if(battery_voltage > 12.6f){
 		battery_voltage = 12.6;
 	}
@@ -2831,20 +2831,20 @@ MulticopterPositionControl::calculate_thrust_setpoint()
 		matrix::Vector3f gravity(0.0f, 0.0f, _mav_mass * GRA_ACC);
 
 		// without prediction
-		estimator_update_2rd(_vel, _dt, _x1, _x2);
-//		_thrust_hat = _x2 * MAV_MASS;
-		_thrust_hat = _x2 * _mav_mass;
-//		_thrust_motor = compute_actuate_thrust();
-		_thrust_motor = compute_actuate_thrust() + gravity;
-		estimator_update_2rd(_thrust_motor, _dt, _x1_thrust, _x2_thrust);
-//		_thrust_dist = _thrust_hat - (_x1_thrust + gravity);
-		_thrust_dist = _thrust_hat - _x1_thrust;
+//		estimator_update_2rd(_vel, _dt, _x1, _x2);
+////		_thrust_hat = _x2 * MAV_MASS;
+//		_thrust_hat = _x2 * _mav_mass;
+////		_thrust_motor = compute_actuate_thrust();
+//		_thrust_motor = compute_actuate_thrust() + gravity;
+//		estimator_update_2rd(_thrust_motor, _dt, _x1_thrust, _x2_thrust);
+////		_thrust_dist = _thrust_hat - (_x1_thrust + gravity);
+//		_thrust_dist = _thrust_hat - _x1_thrust;
 
-//		estimator_update_3rd(_pos, _dt, _x1, _x2, _x3);
-//		_thrust_hat = _x3 * _mav_mass;
-//		_thrust_motor = compute_actuate_thrust();
-//		estimator_update_3rd(_thrust_motor, _dt, _x1_thrust, _x2_thrust, _x3_thrust);
-//		_thrust_dist = _thrust_hat - (_x1_thrust + gravity);
+		estimator_update_3rd(_pos, _dt, _x1, _x2, _x3);
+		_thrust_hat = _x3 * _mav_mass;
+		_thrust_motor = compute_actuate_thrust();
+		estimator_update_3rd(_thrust_motor, _dt, _x1_thrust, _x2_thrust, _x3_thrust);
+		_thrust_dist = _thrust_hat - (_x1_thrust + gravity);
 
 //		// with prediction
 //		estimator_update_3rd(_vel, _dt, _x1, _x2, _x3);
@@ -2860,10 +2860,10 @@ MulticopterPositionControl::calculate_thrust_setpoint()
 		thrust_comp(1) = math::constrain(_thrust_dist(1), -gravity(2), gravity(2));
 		thrust_comp(2) = math::constrain(_thrust_dist(2), -gravity(2), gravity(2));
 
-		print_vector3("acc", _x2, 1);
-		print_vector3("thrust_hat", _thrust_hat);
-		print_vector3("thrust_motor", _x1_thrust);
-		print_vector3("thrust_dist", _thrust_dist);
+//		print_vector3("acc", _x2, 1);
+//		print_vector3("thrust_hat", _thrust_hat);
+//		print_vector3("thrust_motor", _x1_thrust);
+//		print_vector3("thrust_dist", _thrust_dist);
 
 		if(_ndrc_pos_enable == 1 and !_vehicle_land_detected.landed){
 //			thrust_sp -= force_to_accectrl(_thrust_dist);

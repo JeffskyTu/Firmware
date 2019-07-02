@@ -591,8 +591,8 @@ MulticopterAttitudeControl::torque_to_attctrl(Vector3f &computed_torque)
  */
 inline float MulticopterAttitudeControl::motor_max_thrust(float battery_voltage)
 {
-	if(battery_voltage < 11.1f){
-		battery_voltage = 11.1f;
+	if(battery_voltage < 10.9f){
+		battery_voltage = 10.9f;
 	} else if(battery_voltage > 12.6f){
 		battery_voltage = 12.6;
 	}
