@@ -229,9 +229,16 @@ private:
 		(ParamInt<px4::params::MPC_ALT_MODE>) _alt_mode,
 		(ParamFloat<px4::params::RC_FLT_CUTOFF>) _rc_flt_cutoff,
 		(ParamFloat<px4::params::RC_FLT_SMP_RATE>) _rc_flt_smp_rate,
-		(ParamFloat<px4::params::MPC_ACC_HOR_ESTM>) _acc_max_estimator_xy
+		(ParamFloat<px4::params::MPC_ACC_HOR_ESTM>) _acc_max_estimator_xy,
+		(ParamFloat<px4::params::MPC_FLT_VEL_WN>) _vel_flt_omega_nh,
+		(ParamFloat<px4::params::MPC_FLT_VEL_ZETA>) _vel_flt_zeta_nh
 
 	);
+
+	matrix::Vector3f _x1;
+	matrix::Vector3f _x2;
+	float _vel_flt_omega;
+	float _vel_flt_zeta;
 
 
 	control::BlockDerivative _vel_x_deriv;
@@ -325,6 +332,14 @@ private:
 	 * Update reference for local position projection
 	 */
 	void		update_ref();
+
+	/**
+	 * Estimator for vel using Runge-Kutta methods
+	 */
+	void estimator_update_2rd(matrix::Vector3f x, const float dt, matrix::Vector3f &x1, matrix::Vector3f &x2);
+
+	void estimator_model_2rd(matrix::Vector3f &vel, matrix::Vector3f &x1, matrix::Vector3f &x2,
+						matrix::Vector3f &x1_dot, matrix::Vector3f &x2_dot);
 
 	/**
 	 * Reset position setpoint to current position.
@@ -508,6 +523,9 @@ MulticopterPositionControl::MulticopterPositionControl() :
 
 	_thrust_int.zero();
 
+	_x1.zero();
+	_x2.zero();
+
 	/* fetch initial parameter values */
 	parameters_update(true);
 }
@@ -632,6 +650,9 @@ MulticopterPositionControl::parameters_update(bool force)
 		_acceleration_state_dependent_z = _acceleration_z_max_up.get();
 		/* we only use jerk for braking if jerk_hor_max > jerk_hor_min; otherwise just set jerk very large */
 		_manual_jerk_limit_z = (_jerk_hor_max.get() > _jerk_hor_min.get()) ? _jerk_hor_max.get() : 1000000.f;
+
+		_vel_flt_omega = _vel_flt_omega_nh.get();
+		_vel_flt_zeta = _vel_flt_zeta_nh.get();
 
 	}
 
@@ -2469,6 +2490,41 @@ MulticopterPositionControl::calculate_velocity_setpoint()
 }
 
 void
+MulticopterPositionControl::estimator_update_2rd(matrix::Vector3f x, const float dt, matrix::Vector3f &x1, matrix::Vector3f &x2)
+{
+	matrix::Vector3f x1_dot_1, x2_dot_1, x1_dot_2, x2_dot_2, x1_dot_3, x2_dot_3, x1_dot_4, x2_dot_4;
+	matrix::Vector3f x1_tmp, x2_tmp;
+
+	x1_tmp = x1;	// x1: estimate of x
+	x2_tmp = x2;	// x2: estimate of x's acceleration
+	estimator_model_2rd(x, x1_tmp, x2_tmp, x1_dot_1, x2_dot_1);
+
+	x1_tmp = x1 + x1_dot_1 * dt/2.0f;
+	x2_tmp = x2 + x2_dot_1 * dt/2.0f;
+	estimator_model_2rd(x, x1_tmp, x2_tmp, x1_dot_2, x2_dot_2);
+
+	x1_tmp = x1 + x1_dot_2 * dt/2.0f;
+	x2_tmp = x2 + x2_dot_2 * dt/2.0f;
+	estimator_model_2rd(x, x1_tmp, x2_tmp, x1_dot_3, x2_dot_3);
+
+	x1_tmp = x1 + x1_dot_3 * dt;
+	x2_tmp = x2 + x2_dot_3 * dt;
+	estimator_model_2rd(x, x1_tmp, x2_tmp, x1_dot_4, x2_dot_4);
+
+	x1 += (x1_dot_1 + x1_dot_2 * 2.0f + x1_dot_3 * 2.0f + x1_dot_4) * dt/6.0f;
+	x2 += (x2_dot_1 + x2_dot_2 * 2.0f + x2_dot_3 * 2.0f + x2_dot_4) * dt/6.0f;
+
+}
+
+void
+MulticopterPositionControl::estimator_model_2rd(matrix::Vector3f &vel, matrix::Vector3f &x1, matrix::Vector3f &x2, matrix::Vector3f &x1_dot, matrix::Vector3f &x2_dot)
+{
+	x1_dot = x2;
+	x2_dot =  (vel - x1) * _vel_flt_omega * _vel_flt_omega - x2 * 2.0f * _vel_flt_zeta * _vel_flt_omega;
+}
+
+
+void
 MulticopterPositionControl::calculate_thrust_setpoint()
 {
 	/* reset integrals if needed */
@@ -2500,8 +2556,12 @@ MulticopterPositionControl::calculate_thrust_setpoint()
 		}
 	}
 
+	/* apply low-pass filtering for vel with vibration noise */
+	estimator_update_2rd(_vel, _dt, _x1, _x2);
+
 	/* velocity error */
-	matrix::Vector3f vel_err = _vel_sp - _vel;
+//	matrix::Vector3f vel_err = _vel_sp - _vel;
+	matrix::Vector3f vel_err = _vel_sp - _x1;
 
 	/* thrust vector in NED frame */
 	matrix::Vector3f thrust_sp;

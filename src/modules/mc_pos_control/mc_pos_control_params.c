@@ -603,3 +603,10 @@ PARAM_DEFINE_FLOAT(MPC_TKO_RAMP_T, 0.4f);
  * @group Multicopter Position Control
  */
 PARAM_DEFINE_INT32(MPC_FLT_TSK, 0);
+
+/**
+ * Cutoff frequency of filter for vel since MAV may contains high frequency vibration
+ */
+PARAM_DEFINE_FLOAT(MPC_FLT_VEL_WN, 25.0f);
+PARAM_DEFINE_FLOAT(MPC_FLT_VEL_ZETA, 0.6f);
+PARAM_DEFINE_INT32(MPC_FLT_VEL_EN, 0);
